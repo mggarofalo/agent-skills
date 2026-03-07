@@ -1,6 +1,6 @@
 # agent-skills
 
-Canonical source for Claude Code skills, commands, agents, hooks, and config. Clone on any machine and run the install script to set up symlinks.
+Canonical source for Claude Code skills, commands, agents, hooks, and config. Clone on any machine and run `python install.py` to set up symlinks.
 
 ## Structure
 
@@ -17,34 +17,17 @@ config/
 
 ## Setup
 
-```bash
+```
 git clone https://github.com/mggarofalo/agent-skills.git ~/Source/agent-skills
-cd ~/Source/agent-skills
+cd agent-skills
+python install.py
 ```
 
-**Windows (PowerShell):**
-```powershell
-.\install.ps1
-cd agents\pr-bug-finder; pip install -e .
-```
-
-**macOS / Linux / Git Bash:**
-```bash
-./install.sh
-cd agents/pr-bug-finder && pip install -e .
-```
+Works on macOS, Linux, Windows (PowerShell, Git Bash, WSL). Automatically installs Python agent packages via `uv` (falls back to `pip`).
 
 ## Syncing changes
 
-Since `~/.claude/skills`, `commands`, and `agents` are symlinks into this repo, any edits are already reflected here. To push:
-
-```bash
-./sync.sh                        # push everything
-./sync.sh skills commands        # push specific folders
-./sync.sh -m "add new skill"     # custom commit message
-```
-
-On other machines, just `git pull` — symlinks pick up the changes automatically.
+Since `~/.claude/skills`, `commands`, and `agents` are symlinks into this repo, any edits are already reflected here. Commit and push as normal. On other machines, `git pull` picks up changes automatically.
 
 ## Adding new content
 
