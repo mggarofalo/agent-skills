@@ -20,6 +20,16 @@
             "timeout": 10
           }
         ]
+      },
+      {
+        "matcher": "Read|Edit|Write|Glob|Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python ~/.claude/hooks/enforce-worktree-paths.py",
+            "timeout": 10
+          }
+        ]
       }
     ]
   },

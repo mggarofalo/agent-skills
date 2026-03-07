@@ -25,6 +25,29 @@ python install.py
 
 Works on macOS, Linux, Windows (PowerShell, Git Bash, WSL). Automatically installs Python agent packages via `uv` (falls back to `pip`).
 
+### Windows symlink prerequisites
+
+The installer creates symlinks, which on Windows require one of:
+
+1. **Developer Mode** (recommended) — Settings > Privacy & Security > For developers > Developer Mode: On
+2. An elevated (admin) shell
+
+Additionally, if you use Git Bash, set the `MSYS` environment variable so `ln -s` creates real symlinks instead of copies:
+
+```
+# Permanent (user-level env var — applies to all future shells)
+[System.Environment]::SetEnvironmentVariable('MSYS', 'winsymlinks:nativestrict', 'User')
+
+# Or per-session in ~/.bashrc
+export MSYS=winsymlinks:nativestrict
+```
+
+Also ensure git is configured to preserve symlinks on clone:
+
+```
+git config --global core.symlinks true
+```
+
 ## Syncing changes
 
 Since `~/.claude/skills`, `commands`, and `agents` are symlinks into this repo, any edits are already reflected here. Commit and push as normal. On other machines, `git pull` picks up changes automatically.
@@ -70,11 +93,12 @@ Since `~/.claude/skills`, `commands`, and `agents` are symlinks into this repo, 
 
 ### Hooks
 
-| Hook | Description |
-|------|-------------|
-| **reject-compound-bash** | Blocks `&&`/`||`/`;` chaining, `bash -c` wrappers, `npx --prefix` |
-| **normalize-git-dash-c** | Blocks `git -C` and `git -c` flags that break permission matching |
-| **prefer-dedicated-tools** | Blocks `find`/`grep`/`cat`/`sed`/etc. in favor of Glob/Grep/Read/Edit |
+| Hook | Matches | Description |
+|------|---------|-------------|
+| **reject-compound-bash** | `Bash` | Blocks `&&`/`||`/`;` chaining, `bash -c` wrappers, `npx --prefix` |
+| **normalize-git-dash-c** | `Bash` | Blocks `git -C` and `git -c` flags that break permission matching |
+| **prefer-dedicated-tools** | `Bash` | Blocks `find`/`grep`/`cat`/`sed`/etc. in favor of Glob/Grep/Read/Edit |
+| **enforce-worktree-paths** | `Read\|Edit\|Write\|Glob\|Grep` | Prevents agents in worktrees from reading/writing the original repo root |
 
 ### Config
 
