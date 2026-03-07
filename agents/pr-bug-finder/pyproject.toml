@@ -1,0 +1,12 @@
+[project]
+name = "pr-bug-finder"
+version = "0.1.0"
+description = "Adversarial PR bug-finding agent using competing Sonnet subagents"
+requires-python = ">=3.10"
+dependencies = [
+    "claude-agent-sdk",
+]
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.backends._legacy:_Backend"

@@ -1,0 +1,9 @@
+{
+  "enabledPlugins": {
+    "pr-review-toolkit@claude-plugins-official": true
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "python3 ~/.claude/statusline.py"
+  }
+}
