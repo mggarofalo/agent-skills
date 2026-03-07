@@ -2,10 +2,23 @@
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
-CLAUDE_DIR="$HOME/.claude"
 
+# Resolve ~/.claude cross-platform.
+# - macOS / Linux: $HOME/.claude
+# - Git Bash / MSYS2: cygpath $USERPROFILE, or /c/Users/$USER
+# - WSL: /mnt/c/Users/$USER
+CLAUDE_DIR="$HOME/.claude"
+if [[ ! -d "$CLAUDE_DIR" ]] && [[ -n "${USERPROFILE:-}" ]] && command -v cygpath &>/dev/null; then
+    CLAUDE_DIR="$(cygpath "$USERPROFILE")/.claude"
+fi
+if [[ ! -d "$CLAUDE_DIR" ]] && [[ -d "/c/Users/$(whoami)/.claude" ]]; then
+    CLAUDE_DIR="/c/Users/$(whoami)/.claude"
+fi
+if [[ ! -d "$CLAUDE_DIR" ]] && [[ -d "/mnt/c/Users/$(whoami)/.claude" ]]; then
+    CLAUDE_DIR="/mnt/c/Users/$(whoami)/.claude"
+fi
 if [[ ! -d "$CLAUDE_DIR" ]]; then
-    echo "Error: $CLAUDE_DIR does not exist. Install Claude Code first."
+    echo "Error: Cannot find ~/.claude directory. Install Claude Code first."
     exit 1
 fi
 
@@ -77,8 +90,15 @@ link_dir "$REPO_DIR/skills"   "$CLAUDE_DIR/skills"
 link_dir "$REPO_DIR/commands" "$CLAUDE_DIR/commands"
 link_dir "$REPO_DIR/agents"   "$CLAUDE_DIR/agents"
 
+# Hooks: use per-file symlinks (not directory symlink) because settings.json
+# hooks must resolve at all times — a directory swap would break Bash mid-session.
+mkdir -p "$CLAUDE_DIR/hooks"
+for hook in "$REPO_DIR/hooks"/*.py; do
+    link_file "$hook" "$CLAUDE_DIR/hooks/$(basename "$hook")"
+done
+
 # Symlink individual files
-link_file "$REPO_DIR/config/statusline.py"    "$CLAUDE_DIR/statusline.py"
+link_file "$REPO_DIR/config/statusline.py"    "$CLAUDE_DIR/statusline-command.py"
 link_file "$REPO_DIR/config/keybindings.json" "$CLAUDE_DIR/keybindings.json"
 
 # Copy settings.json.example if settings.json doesn't exist

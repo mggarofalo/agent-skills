@@ -1,9 +1,42 @@
 {
-  "enabledPlugins": {
-    "pr-review-toolkit@claude-plugins-official": true
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python ~/.claude/hooks/reject-compound-bash.py",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "python ~/.claude/hooks/normalize-git-dash-c.py",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "python ~/.claude/hooks/prefer-dedicated-tools.py",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
   },
   "statusLine": {
     "type": "command",
-    "command": "python3 ~/.claude/statusline.py"
-  }
+    "command": "python ~/.claude/statusline-command.py"
+  },
+  "enabledPlugins": {
+    "frontend-design@claude-plugins-official": true,
+    "feature-dev@claude-plugins-official": true,
+    "typescript-lsp@claude-plugins-official": true,
+    "commit-commands@claude-plugins-official": true,
+    "claude-md-management@claude-plugins-official": true,
+    "linear@claude-plugins-official": true,
+    "csharp-lsp@claude-plugins-official": true,
+    "code-review@claude-plugins-official": true,
+    "swift-lsp@claude-plugins-official": true
+  },
+  "autoUpdatesChannel": "stable"
 }

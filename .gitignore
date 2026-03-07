@@ -18,6 +18,9 @@ venv/
 secrets.json
 credentials.json
 
+# Claude Code project-local
+.claude/
+
 # IDE and OS
 .idea/
 .vscode/
