@@ -109,12 +109,22 @@ else
     echo "  [skip] $CLAUDE_DIR/settings.json already exists"
 fi
 
+# Install Python agent packages (any agents/<name>/pyproject.toml)
+for toml in "$REPO_DIR/agents"/*/pyproject.toml; do
+    [[ -f "$toml" ]] || continue
+    agent_dir="$(dirname "$toml")"
+    agent_name="$(basename "$agent_dir")"
+    echo "  [install] $agent_name"
+    if command -v uv &>/dev/null; then
+        uv pip install --system -e "$agent_dir"
+    else
+        echo "    uv not found — falling back to pip"
+        pip install -e "$agent_dir"
+    fi
+done
+
 echo ""
 echo "Done."
 if $made_backup; then
     echo "Backups saved to: $BACKUP_DIR"
 fi
-echo ""
-echo "Optional next steps:"
-echo "  cd $REPO_DIR/agents/pr-bug-finder && pip install -e ."
-echo "  Create .env files for agents that need API keys"

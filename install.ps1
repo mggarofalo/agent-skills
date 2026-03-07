@@ -118,12 +118,22 @@ if (-not (Test-Path $SettingsPath)) {
     Write-Host "  [skip] $SettingsPath already exists"
 }
 
+# Install Python agent packages (any agents/<name>/pyproject.toml)
+$AgentsDir = Join-Path $RepoDir 'agents'
+foreach ($toml in Get-ChildItem $AgentsDir -Recurse -Filter 'pyproject.toml' -Depth 1) {
+    $agentDir = $toml.DirectoryName
+    $agentName = Split-Path $agentDir -Leaf
+    Write-Host "  [install] $agentName"
+    if (Get-Command uv -ErrorAction SilentlyContinue) {
+        uv pip install --system -e $agentDir
+    } else {
+        Write-Host "    uv not found - falling back to pip"
+        pip install -e $agentDir
+    }
+}
+
 Write-Host ""
 Write-Host "Done."
 if ($MadeBackup) {
     Write-Host "Backups saved to: $BackupDir"
 }
-Write-Host ""
-Write-Host "Optional next steps:"
-Write-Host "  cd $RepoDir\agents\pr-bug-finder; pip install -e ."
-Write-Host "  Create .env files for agents that need API keys"
