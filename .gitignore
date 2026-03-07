@@ -1,5 +1,30 @@
+# Python
 __pycache__/
 *.pyc
-.env
+*.pyo
 *.egg-info/
+.eggs/
 .venv/
+venv/
+
+# Secrets and credentials
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+*.pfx
+*.p12
+secrets.json
+credentials.json
+
+# IDE and OS
+.idea/
+.vscode/
+.DS_Store
+*.swp
+*.swo
+*~
+
+# Dependencies
+node_modules/
