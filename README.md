@@ -8,7 +8,7 @@ Canonical source for Claude Code skills, commands, agents, hooks, and config. Cl
 skills/          -> ~/.claude/skills
 commands/        -> ~/.claude/commands
 agents/          -> ~/.claude/agents
-hooks/           ~/.claude/hooks/*.py  (per-file symlinks)
+hooks/           -> ~/.claude/hooks
 config/
   statusline.py    -> ~/.claude/statusline-command.py
   keybindings.json -> ~/.claude/keybindings.json
@@ -70,6 +70,7 @@ Since `~/.claude/skills`, `commands`, and `agents` are symlinks into this repo, 
 | Skill | Description |
 |-------|-------------|
 | **accessibility-audit** | WCAG 2.1 AA compliance audit using agent-browser and static analysis |
+| **agent-skills** | Scaffold, remove, or list skills, hooks, commands, agents, and config |
 | **init-repo** | GitHub repo scaffolding with CI, guidance files, and config per language |
 | **owasp-top-10** | OWASP Top 10 security audit (static, dependency, and runtime) |
 | **powershell-expert** | PowerShell scripting, modules, and GUI development reference |

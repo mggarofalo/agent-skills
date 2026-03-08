@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Install agent-skills by symlinking into ~/.claude/.
 
-Creates directory symlinks for skills, commands, and agents; per-file
-symlinks for hooks; and file symlinks for statusline and keybindings.
+Creates directory symlinks for skills, commands, agents, and hooks;
+and file symlinks for statusline and keybindings.
 Backs up any existing non-symlink targets before replacing them.
 """
 
@@ -81,12 +81,7 @@ link_dir(REPO_DIR / "skills", CLAUDE_DIR / "skills")
 link_dir(REPO_DIR / "commands", CLAUDE_DIR / "commands")
 link_dir(REPO_DIR / "agents", CLAUDE_DIR / "agents")
 
-# Hooks: per-file symlinks (not directory symlink) because settings.json hooks
-# must resolve at all times — a directory swap would break hooks mid-session.
-hooks_dir = CLAUDE_DIR / "hooks"
-hooks_dir.mkdir(exist_ok=True)
-for hook in sorted((REPO_DIR / "hooks").glob("*.py")):
-    link_file(hook, hooks_dir / hook.name)
+link_dir(REPO_DIR / "hooks", CLAUDE_DIR / "hooks")
 
 # Symlink individual config files
 link_file(REPO_DIR / "config" / "statusline.py", CLAUDE_DIR / "statusline-command.py")
