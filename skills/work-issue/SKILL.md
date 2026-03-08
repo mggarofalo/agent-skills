@@ -35,16 +35,27 @@ Use the MCP linear tool to read the issue. Extract the title, description, accep
 - **Interactive:** If anything is ambiguous, ask before proceeding.
 - **Autonomous:** If anything is ambiguous, make a reasonable assumption and note it. Continue.
 
-## Step 2: Create a branch
+## Step 2: Verify or create a branch
+
+Check the current branch:
+
+```bash
+git branch --show-current
+```
+
+- **Already on an issue branch** (e.g. the launcher created it via `claude -w`): skip branch creation, proceed to Step 3.
+- **On `main` or a non-issue branch** (user ran `/work-issue` directly): create the branch with the standard naming convention:
 
 ```bash
 git checkout main && git pull
-git checkout -b <prefix>/<issue-id>-short-description
+git checkout -b <prefix>/<issue-id-lower>-<slugified-title>
 ```
+
+Naming rules: lowercase issue ID, slugified title (non-alphanumeric → hyphens, max ~5 words).
 
 Prefixes (conventional commit style): `feat/`, `fix/`, `refactor/`, `chore/`, `docs/`, `test/`, `perf/`, `ci/`
 
-Examples: `feat/ENG-123-user-validation`, `fix/ENG-456-null-pointer-on-login`
+Examples: `feat/mgg-54-docker-compose-configuration`, `fix/eng-456-null-pointer-on-login`
 
 ## Step 3: Plan
 
@@ -175,7 +186,27 @@ Triage results from **both** bug analysis and React render-cycle QA (if it ran).
 
 A parent agent can spawn multiple work-issue agents in parallel to work on independent issues concurrently. Each agent runs in an isolated worktree so there are no file conflicts.
 
-### How to invoke from a parent agent
+### Launcher script
+
+The launcher (`~/.claude/skills/work-issue/launch.py`) builds a deterministic branch name and starts Claude Code in a worktree. It keeps naming logic in one testable place.
+
+**Interactive use:**
+```bash
+python ~/.claude/skills/work-issue/launch.py --type feat --issue MGG-54 --title "Docker Compose Configuration"
+```
+
+**Autonomous use:**
+```bash
+python ~/.claude/skills/work-issue/launch.py --type feat --issue MGG-54 --title "Docker Compose Configuration" --prompt "/work-issue MGG-54"
+```
+
+**Dry run** (print branch name and exit):
+```bash
+python ~/.claude/skills/work-issue/launch.py --type feat --issue MGG-54 --title "Docker Compose Configuration" --dry-run
+# → feat/mgg-54-docker-compose-configuration
+```
+
+### How to invoke without the launcher
 
 ```
 Task tool:
