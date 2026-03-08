@@ -193,7 +193,7 @@ async def run_agent(
     return "\n".join(text_parts)
 
 
-async def run_analysis(diff: str, cwd: str, max_budget: float, out_dir: str) -> None:
+async def run_analysis(diff: str, cwd: str, out_dir: str) -> None:
     """Run the 3-step adversarial bug-finding pipeline."""
     timer = Timer()
     stderr = sys.stderr
@@ -214,7 +214,6 @@ async def run_analysis(diff: str, cwd: str, max_budget: float, out_dir: str) -> 
             system_prompt=build_hunter_prompt(),
             allowed_tools=["Read", "Glob", "Grep"],
             max_turns=100,
-            max_budget_usd=max_budget * 0.4,
             **base_opts,
         ),
         timer=timer,
@@ -241,7 +240,6 @@ async def run_analysis(diff: str, cwd: str, max_budget: float, out_dir: str) -> 
             system_prompt=build_challenger_prompt(),
             allowed_tools=["Read", "Glob", "Grep"],
             max_turns=100,
-            max_budget_usd=max_budget * 0.4,
             **base_opts,
         ),
         timer=timer,
@@ -268,7 +266,6 @@ async def run_analysis(diff: str, cwd: str, max_budget: float, out_dir: str) -> 
             system_prompt=build_synthesizer_prompt(),
             allowed_tools=[],
             max_turns=5,
-            max_budget_usd=max_budget * 0.2,
             **base_opts,
         ),
         timer=timer,
@@ -316,12 +313,6 @@ def main() -> None:
         help="Working directory for codebase context (default: current directory)",
     )
     parser.add_argument(
-        "--max-budget",
-        type=float,
-        default=2.00,
-        help="Maximum budget in USD (default: $2.00)",
-    )
-    parser.add_argument(
         "--output-dir",
         metavar="DIR",
         help="Directory for output files (default: auto-created in /tmp)",
@@ -356,7 +347,7 @@ def main() -> None:
 
     out_dir = args.output_dir or tempfile.mkdtemp(prefix="pr-bug-finder-")
     try:
-        asyncio.run(run_analysis(diff, cwd, args.max_budget, out_dir))
+        asyncio.run(run_analysis(diff, cwd, out_dir))
     finally:
         if previous_branch:
             restore_branch(previous_branch, cwd)
