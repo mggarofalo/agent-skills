@@ -10,15 +10,30 @@ description: >
 
 ## YOU MUST EXECUTE ALL STEPS BELOW
 
-This is a **checklist you must execute**, not documentation. You are responsible for every step. After completing each step, move to the next one. You are NOT done until the PR is merged. If you stop early, the task is incomplete.
+This is a **checklist you must execute**, not documentation. You are responsible for every step. After completing each step, move to the next one. If you stop early, the task is incomplete.
 
 After exiting plan mode or after any context compaction, re-read this file (`~/.claude/skills/work-issue/SKILL.md`) to get the full checklist back in context.
+
+## Execution Modes
+
+This skill supports two modes. Detect which mode you are in **before starting Step 1**.
+
+**Interactive mode** (default): You are running in a direct conversation with the user. Use plan mode, ask clarifying questions, and request merge approval as described below.
+
+**Autonomous mode**: You are running as a subagent, or the invoking prompt contains "autonomous", "plan approved", or "headless". In this mode:
+- Do NOT use `EnterPlanMode` or `AskUserQuestion` — these block and you cannot receive interactive responses.
+- Plan inline instead of entering plan mode.
+- Make reasonable assumptions instead of asking questions; document assumptions in the PR description.
+- Stop after Step 9 (bug analysis + triage). Do NOT merge — return the PR URL so the parent/user can review.
 
 ---
 
 ## Step 1: Read the issue
 
-Use the MCP linear tool to read the issue. Extract the title, description, acceptance criteria, labels, and priority. Summarize it to the user in 2-3 sentences. If anything is ambiguous, ask before proceeding.
+Use the MCP linear tool to read the issue. Extract the title, description, acceptance criteria, labels, and priority. Summarize it in 2-3 sentences.
+
+- **Interactive:** If anything is ambiguous, ask before proceeding.
+- **Autonomous:** If anything is ambiguous, make a reasonable assumption and note it. Continue.
 
 ## Step 2: Create a branch
 
@@ -33,17 +48,18 @@ Examples: `feat/ENG-123-user-validation`, `fix/ENG-456-null-pointer-on-login`
 
 ## Step 3: Plan
 
-Enter plan mode. Your plan must include:
+Your plan must include:
 
 1. The code changes (files, approach, edge cases, tests)
 2. ALL the remaining steps from this checklist (steps 4-10)
 3. An instruction to re-read `~/.claude/skills/work-issue/SKILL.md` after plan approval
 
-Present the plan to the user for approval.
+- **Interactive:** Enter plan mode. Present the plan to the user for approval.
+- **Autonomous:** Write the plan inline (do NOT call `EnterPlanMode`). Proceed immediately to Step 4.
 
 ## Step 4: Re-read this file
 
-After the user approves the plan, re-read `~/.claude/skills/work-issue/SKILL.md` before doing anything else. Context may have been compacted and you may have lost the remaining steps.
+Re-read `~/.claude/skills/work-issue/SKILL.md` before doing anything else. Context may have been compacted and you may have lost the remaining steps.
 
 ## Step 5: Implement
 
@@ -79,23 +95,54 @@ EOF
 
 **You are not done. Continue to step 8.**
 
-## Step 8: Run bug analysis
+## Step 8: Run bug analysis and React render-cycle QA
 
-Invoke `/find-bugs` on the PR you just created. Wait for the analysis to complete. Read the report file.
+Run these analyses **in parallel** — they are independent:
+
+1. **Bug analysis**: Invoke `/find-bugs` on the PR you just created.
+2. **React render-cycle QA** (conditional): Check whether the diff contains React files (`*.tsx`, `*.jsx` under `src/client/`). If yes, launch the `react-render-qa` agent via the Task tool:
+
+```
+Task tool:
+  subagent_type: react-render-qa
+  prompt: |
+    Analyze the PR on the current branch for React render-cycle bugs.
+    Run `gh pr diff` to get the diff, then follow your analysis workflow.
+```
+
+If no React files are in the diff, skip the React QA.
+
+Wait for both analyses to complete. Read the report files.
 
 **You are not done. Continue to step 9.**
 
-## Step 9: Triage bug analysis results
+## Step 9: Triage analysis results
 
-**If there are follow-up recommendations:** File Linear issues for each using the MCP linear tool. Ask the user which team/project if not obvious.
+Triage results from **both** bug analysis and React render-cycle QA (if it ran).
 
-**If there are confirmed bugs:** Plan remediation for each bug (you may enter plan mode again). After user approval, fix them, run pre-commit hooks until they pass, commit, and push.
+**React render-cycle QA findings:**
+- **CRITICAL or HIGH findings:** These are bugs. Fix them before merging — same as confirmed bugs below.
+- **MEDIUM findings:** File Linear issues for each using the MCP linear tool (same as follow-up recommendations below).
 
-**If no confirmed bugs and no follow-ups:** Continue to step 10.
+**Bug analysis findings:**
+
+**If there are follow-up recommendations:** File Linear issues for each using the MCP linear tool.
+- **Interactive:** Ask the user which team/project if not obvious.
+- **Autonomous:** Use the same team and project as the source issue.
+
+**If there are confirmed bugs:** Fix them, run pre-commit hooks until they pass, commit, and push.
+- **Interactive:** You may enter plan mode to plan remediation.
+- **Autonomous:** Plan remediation inline and proceed directly to the fix.
+
+**If no confirmed bugs and no follow-ups from either analysis:** Continue to step 10.
+
+- **Autonomous:** You are done. Return the PR URL and a summary of what was implemented, any assumptions made, and any follow-up issues filed. Do NOT proceed to Step 10.
 
 **You are not done. Continue to step 10.**
 
 ## Step 10: Wait for CI and merge
+
+> **Autonomous mode stops after Step 9.** This step is interactive-only.
 
 1. Run `gh pr checks --watch` to wait for CI.
 2. **If CI passes:** Ask the user if they're ready to merge. If yes: `gh pr merge --squash`
@@ -111,7 +158,7 @@ Invoke `/find-bugs` on the PR you just created. Wait for the analysis to complet
 - **Never force-push** unless the user explicitly asks.
 - **Verify the branch** before every push — `git branch --show-current` must match the branch you created.
 - **Pre-commit hooks must pass** before every commit. Fix issues, don't skip hooks.
-- If any step fails in a way you can't recover from, stop and explain to the user.
+- If any step fails in a way you can't recover from, stop and explain to the user (interactive) or return a clear error summary (autonomous).
 
 ## When to Use
 
@@ -123,3 +170,49 @@ Invoke `/find-bugs` on the PR you just created. Wait for the analysis to complet
 - User just wants to discuss an issue without implementing it
 - User wants a code review on existing work (use pr-bug-finder instead)
 - User is mid-implementation and just needs help with a specific part
+
+## Orchestration (Parallel / Subagent Execution)
+
+A parent agent can spawn multiple work-issue agents in parallel to work on independent issues concurrently. Each agent runs in an isolated worktree so there are no file conflicts.
+
+### How to invoke from a parent agent
+
+```
+Task tool:
+  subagent_type: general-purpose
+  model: opus
+  isolation: worktree
+  run_in_background: true
+  prompt: |
+    You are running in autonomous mode. Use the /work-issue skill to implement <ISSUE-ID>.
+    Execute the full lifecycle through bug analysis (Steps 1-9). Do not merge.
+```
+
+### Prerequisites
+
+### Permission prerequisites
+
+The project's `.claude/settings.local.json` must auto-allow these permissions — background agents cannot prompt for interactive grants:
+
+- `Edit` and `Write` — for modifying source files
+- `Bash(git push:*)` — for pushing branches to remote
+- `Bash(npm install:*)` — if the project has JS/TS dependencies
+
+Worktree isolation provides the safety boundary — agents can only modify their isolated copy of the repo.
+
+### Worktree initialization
+
+Projects with frontend dependencies should configure a `WorktreeCreate` hook in `.claude/settings.json` to run dependency installation automatically. Without this, worktrees lack `node_modules` and agents cannot run pre-commit hooks or frontend tests. See Claude Code docs on [hooks](https://code.claude.com/docs/en/hooks) for the `WorktreeCreate` event.
+
+### What the parent agent should do
+
+1. **Spawn** one agent per issue, all in parallel with `isolation: "worktree"`.
+2. **Wait** for agents to complete. Each returns a PR URL and summary.
+3. **Review** the PRs (or ask the user to review them).
+4. **Merge** approved PRs and update Linear issue status.
+
+### Constraints
+
+- Only parallelize issues that don't touch the same files. If two issues modify the same code, work them sequentially.
+- The parent agent should not duplicate work the subagent is doing.
+- Each agent handles its own bug analysis and follow-up issue filing.
