@@ -1,12 +1,15 @@
 ---
 description: Run adversarial bug analysis on a PR
-argument-hint: [pr-url-or-diff-path]
+argument-hint: [pr-number-or-url-or-diff-path]
 allowed-tools: Bash, Read
 ---
 
 Run the adversarial PR bug-finder agent. This takes 5-15 minutes.
 
+CRITICAL: The argument is a **GitHub PR number** (e.g., `125`), a GitHub PR URL, or a diff file path. It is NEVER a Linear issue ID. Do NOT interpret bare numbers as Linear issues (e.g., do NOT look up MGG-125). Always pass the argument directly to the Python pipeline below — do NOT attempt manual bug analysis yourself.
+
 IMPORTANT execution rules:
+- You MUST run the Python pipeline below. Do NOT skip it and do your own analysis.
 - Run the command in the FOREGROUND, not the background. This is a long-running command — set a timeout of 600000 (10 minutes).
 - Do NOT append `2>&1`. Stderr streams live progress to the terminal; stdout contains only the report file path.
 - Do NOT run it in the background or try to poll it.
@@ -19,7 +22,7 @@ mkdir -p "$OUTPUT_DIR"
 
 If an argument was provided (`$ARGUMENTS`), determine what it is:
 
-- If it looks like a URL (contains `github.com` or starts with `http`) or a bare PR number, run:
+- If it looks like a URL (contains `github.com` or starts with `http`) or a bare number (GitHub PR number), run:
   ```
   env -u CLAUDECODE python ~/.claude/agents/pr-bug-finder/main.py $ARGUMENTS --cwd $(pwd) --output-dir "$OUTPUT_DIR"
   ```
