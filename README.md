@@ -74,9 +74,10 @@ Since `~/.claude/skills`, `commands`, and `agents` are symlinks into this repo, 
 | **init-repo** | GitHub repo scaffolding with CI, guidance files, and config per language |
 | **owasp-top-10** | OWASP Top 10 security audit (static, dependency, and runtime) |
 | **powershell-expert** | PowerShell scripting, modules, and GUI development reference |
-| **pr-bug-finder** | Adversarial 3-agent pipeline for finding bugs in PRs |
 | **reflect** | Session retrospective — extract learnings, update memory and guidance files |
+| **resolve-conflicts** | Resolve merge conflicts on a PR by rebasing, resolving per-category, and force-pushing |
 | **sdlc** | Structured SDLC pipeline: Plan, Implement, Review, Security, QA, Accept |
+| **system-audit** | Audit Claude Code system for staleness, redundancy, gaps, and token waste |
 | **work-issue** | End-to-end Linear issue implementation workflow |
 
 ### Commands
