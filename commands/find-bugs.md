@@ -1,12 +1,12 @@
 ---
 description: Run adversarial bug analysis on a PR
-argument-hint: [pr-number-or-url-or-diff-path]
+argument-hint: [pr-number-or-url-or-diff-path-or-local]
 allowed-tools: Bash, Read
 ---
 
 Run the adversarial PR bug-finder agent. This takes 5-15 minutes.
 
-CRITICAL: The argument is a **GitHub PR number** (e.g., `125`), a GitHub PR URL, or a diff file path. It is NEVER a Plane issue ID. Do NOT interpret bare numbers as Plane issues (e.g., do NOT look up MGG-125). Always pass the argument directly to the Python pipeline below — do NOT attempt manual bug analysis yourself.
+CRITICAL: The argument is a **GitHub PR number** (e.g., `125`), a GitHub PR URL, a diff file path, or the word `local` (to analyze uncommitted changes). It is NEVER a Plane issue ID. Do NOT interpret bare numbers as Plane issues (e.g., do NOT look up MGG-125). Always pass the argument directly to the Python pipeline below — do NOT attempt manual bug analysis yourself.
 
 IMPORTANT execution rules:
 - You MUST run the Python pipeline below. Do NOT skip it and do your own analysis.
@@ -22,6 +22,10 @@ mkdir -p "$OUTPUT_DIR"
 
 If an argument was provided (`$ARGUMENTS`), determine what it is:
 
+- If the argument is `local` (case-insensitive), run:
+  ```
+  env -u CLAUDECODE python ~/.claude/agents/pr-bug-finder/main.py --local --cwd $(pwd) --output-dir "$OUTPUT_DIR"
+  ```
 - If it looks like a URL (contains `github.com` or starts with `http`) or a bare number (GitHub PR number), run:
   ```
   env -u CLAUDECODE python ~/.claude/agents/pr-bug-finder/main.py $ARGUMENTS --cwd $(pwd) --output-dir "$OUTPUT_DIR"
@@ -35,7 +39,7 @@ If NO argument was provided, try to detect the current PR:
 ```
 PR_URL=$(gh pr view --json url -q .url 2>/dev/null)
 ```
-If that succeeds, use that URL. If it fails, tell the user to provide a PR URL or diff path.
+If that succeeds, use that URL. If it fails, tell the user they can provide a PR URL, diff path, or use `local` to analyze uncommitted changes.
 
 ## Reading the results
 

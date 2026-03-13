@@ -99,6 +99,22 @@ def restore_branch(branch: str, cwd: str) -> None:
         print(f"Warning: could not restore branch {branch}: {e.stderr}", file=sys.stderr)
 
 
+def get_local_diff(cwd: str) -> str:
+    """Get diff of all uncommitted changes (staged + unstaged) vs HEAD."""
+    try:
+        result = subprocess.run(
+            ["git", "diff", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=True,
+            cwd=cwd,
+        )
+        return result.stdout
+    except subprocess.CalledProcessError as e:
+        print(f"Error getting local diff: {e.stderr}", file=sys.stderr)
+        sys.exit(1)
+
+
 def read_diff_input(path: str) -> str:
     """Read diff from a file path or stdin (if path is '-')."""
     if path == "-":
@@ -308,6 +324,11 @@ def main() -> None:
         help="Path to a diff file, or '-' for stdin",
     )
     parser.add_argument(
+        "--local",
+        action="store_true",
+        help="Analyze uncommitted local changes (staged + unstaged) vs HEAD",
+    )
+    parser.add_argument(
         "--cwd",
         default=".",
         help="Working directory for codebase context (default: current directory)",
@@ -320,13 +341,13 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    if not args.pr_url and not args.diff:
+    sources = sum([bool(args.pr_url), bool(args.diff), args.local])
+    if sources == 0:
         parser.print_help()
-        print("\nError: provide a PR URL or --diff FILE.", file=sys.stderr)
+        print("\nError: provide a PR URL, --diff FILE, or --local.", file=sys.stderr)
         sys.exit(1)
-
-    if args.pr_url and args.diff:
-        print("Error: provide either a PR URL or --diff, not both.", file=sys.stderr)
+    if sources > 1:
+        print("Error: provide only one of: PR URL, --diff, or --local.", file=sys.stderr)
         sys.exit(1)
 
     cwd = os.path.abspath(args.cwd)
@@ -335,6 +356,8 @@ def main() -> None:
     if args.pr_url:
         previous_branch = checkout_pr_branch(args.pr_url, cwd)
         diff = fetch_pr_diff(args.pr_url, cwd)
+    elif args.local:
+        diff = get_local_diff(cwd)
     else:
         diff = read_diff_input(args.diff)
 
