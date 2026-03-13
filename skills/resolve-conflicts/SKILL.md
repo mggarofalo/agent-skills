@@ -45,7 +45,7 @@ Extract Plane issue IDs from the PR title, body, and branch name (pattern: `RECE
 
 For each issue ID found, fetch the issue using the `plane` CLI (determine the project from the issue ID prefix or from `docs/plane.md`):
 ```bash
-plane issue get -p <PROJECT> <ID> -o json
+plane issue get-by-sequence-id --identifier <ID> --expand state,labels,assignees -o json
 ```
 If the CLI is unavailable or fails, fall back to checking `docs/issues/` for archived issue markdown files.
 

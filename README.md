@@ -9,7 +9,6 @@ skills/          -> ~/.claude/skills
 commands/        -> ~/.claude/commands
 agents/          -> ~/.claude/agents
 hooks/           -> ~/.claude/hooks
-scripts/         -> ~/.claude/scripts
 config/
   statusline.py    -> ~/.claude/statusline-command.py
   keybindings.json -> ~/.claude/keybindings.json
@@ -111,11 +110,3 @@ Since `~/.claude/skills`, `commands`, and `agents` are symlinks into this repo, 
 | **keybindings.json** | Custom Claude Code keybindings |
 | **settings.json.example** | Template with hooks, plugins, and statusline configuration |
 
-### Scripts
-
-| Script | Description |
-|--------|-------------|
-| **plane-get-issue.py** | Fetch issue by sequence ID, output formatted summary |
-| **plane-update-state.py** | Update issue state by name |
-| **plane-create-issue.py** | Create issue with markdown description and label resolution |
-| **plane-add-comment.py** | Post markdown comment on an issue |

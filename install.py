@@ -82,7 +82,6 @@ link_dir(REPO_DIR / "commands", CLAUDE_DIR / "commands")
 link_dir(REPO_DIR / "agents", CLAUDE_DIR / "agents")
 
 link_dir(REPO_DIR / "hooks", CLAUDE_DIR / "hooks")
-link_dir(REPO_DIR / "scripts", CLAUDE_DIR / "scripts")
 
 # Symlink individual config files
 link_file(REPO_DIR / "config" / "statusline.py", CLAUDE_DIR / "statusline-command.py")

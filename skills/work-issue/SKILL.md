@@ -38,14 +38,14 @@ This skill supports two modes. Detect which mode you are in **before starting St
 Fetch the issue using the `plane` CLI (determine the project identifier from `docs/plane.md` or the issue ID prefix):
 
 ```bash
-plane issue get -p <PROJECT> <ISSUE-ID> -o json
+plane issue get-by-sequence-id --identifier <ISSUE-ID> --expand state,labels,assignees -o json
 ```
 
 Save the UUID from the output for later update/comment commands. Extract the title, description, acceptance criteria, labels, and priority. Summarize it in 2-3 sentences.
 
 Update the issue state to **In Progress** using the `plane` CLI:
 ```bash
-plane issue update -p <PROJECT> <ISSUE-ID> --state <in-progress-state-id>
+plane issue update -p <PROJECT> --work-item-id <UUID> --state <in-progress-state-id>
 ```
 (Use `plane state list -p <PROJECT> -o json` to find the state ID if needed.)
 
@@ -184,7 +184,7 @@ plane issue create -p <PROJECT> --name "<title>" --description-html "<descriptio
 4. After merge, update the Plane issue state to "Done" using the `plane` CLI:
    ```bash
    plane state list -p <PROJECT> -o json   # find the state ID for "Done"
-   plane issue update -p <PROJECT> <ISSUE-ID> --state <state-id>
+   plane issue update -p <PROJECT> --work-item-id <UUID> --state <state-id>
    ```
 
 **You are done.**
