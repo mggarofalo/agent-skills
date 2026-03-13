@@ -76,7 +76,7 @@ Your plan must include:
 2. ALL the remaining steps from this checklist (steps 4-10)
 3. An instruction to re-read `~/.claude/skills/work-issue/SKILL.md` after plan approval
 
-- **Interactive:** Enter plan mode. Present the plan to the user for approval.
+- **Interactive:** Enter plan mode. Present the plan to the user for approval. When the user approves (e.g. "looks good", "approved", "go ahead", or any affirmative response), **immediately exit plan mode** (`ExitPlanMode`) and proceed to Step 4. Do NOT ask follow-up questions, solicit additional feedback, or cycle back through the plan after approval.
 - **Autonomous:** Write the plan inline (do NOT call `EnterPlanMode`). Proceed immediately to Step 4.
 
 ## Step 4: Re-read this file
