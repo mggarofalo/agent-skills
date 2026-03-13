@@ -355,19 +355,19 @@ If a Plane project exists or was specified, create `docs/plane.md` with:
 
 ```bash
 # Fetch an issue
-plane issue get -p <PROJECT> <ISSUE-ID>
+plane issue get-by-sequence-id --identifier <ISSUE-ID> --expand state,labels,assignees -o json
 
 # Update issue state
-plane issue update -p <PROJECT> <ISSUE-ID> --state <state-id>
+plane issue update -p <PROJECT> --work-item-id <UUID> --state <state-id>
 
 # Create a new issue
 plane issue create -p <PROJECT> --name "<title>" --description-html "<description>" --priority medium
 
 # Add a comment to an issue
-plane comment create -p <PROJECT> --issue <ISSUE-ID> --body "<markdown>"
+plane comment add -p <PROJECT> --work-item-id <UUID> --comment-html "<html>"
 
 # List states (to find state IDs)
-plane state list -p <PROJECT> -o table
+plane state list -p <PROJECT> -o json
 ```
 ```
 
