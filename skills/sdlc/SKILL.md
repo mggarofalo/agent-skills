@@ -32,10 +32,11 @@ instructions: |
 
   1. **Fetch the Plane issue:**
      ```bash
-     python ~/.claude/scripts/plane-get-issue.py <ISSUE-ID>
+     plane issue get-by-sequence-id --identifier <ISSUE-ID> --expand state,labels,assignees -o json
      ```
-     Save the UUID from the output for subsequent update and comment commands.
-     Extract: title, description, identifier (e.g., RECEIPTS-123), URL, acceptance criteria.
+     Save the `id` (UUID) from the JSON output for subsequent update and comment commands.
+     Extract: title, description, identifier (e.g., RECEIPTS-123), acceptance criteria.
+     Use `docs/plane.md` to determine the project identifier for `-p` flags in later commands.
   2. **Discover project context** from the current working directory:
      - Check for a git repo (`git rev-parse --git-dir`)
      - Read `AGENTS.md` if it exists — extract build commands, branch strategy, conventions
@@ -137,7 +138,7 @@ instructions: |
   ### Pipeline Completion
 
   When all 6 phases pass:
-  1. **Post a Plane comment** on the issue with this format (use `python ~/.claude/scripts/plane-add-comment.py <UUID> --body-file .sdlc/<id>-summary.md` or `--body` with inline content):
+  1. **Post a Plane comment** on the issue with this format (use `plane comment add -p <PROJECT> --work-item-id <UUID> --comment-html "<html>"`):
 
   ```markdown
   ## SDLC Pipeline Summary
@@ -159,7 +160,7 @@ instructions: |
 
   2. **Update the Plane issue status** to "Done":
      ```bash
-     python ~/.claude/scripts/plane-update-state.py <UUID> "Done"
+     plane issue update -p <PROJECT> --work-item-id <UUID> --state <done-state-id>
      ```
   3. **Delete the state file** (clean up `.sdlc/<identifier>.md`)
   4. Report the final result to the user

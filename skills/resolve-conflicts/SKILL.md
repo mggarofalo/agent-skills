@@ -46,7 +46,7 @@ Extract Plane issue IDs from the PR title, body, and branch name (pattern: `RECE
 For each issue ID found:
 1. Fetch the issue:
    ```bash
-   python ~/.claude/scripts/plane-get-issue.py <ID>
+   plane issue get-by-sequence-id --identifier <ID> --expand state,labels,assignees -o json
    ```
 2. If the script fails (exit code non-zero), check `docs/issues/` for archived issue markdown files.
 

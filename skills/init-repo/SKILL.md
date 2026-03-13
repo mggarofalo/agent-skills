@@ -355,16 +355,16 @@ If a Plane project exists or was specified, create `docs/plane.md` with:
 
 ```bash
 # Fetch an issue
-python ~/.claude/scripts/plane-get-issue.py <ISSUE-ID>
+plane issue get-by-sequence-id --identifier <ISSUE-ID> --expand state,labels,assignees -o json
 
-# Update issue state
-python ~/.claude/scripts/plane-update-state.py <UUID> "<State Name>"
+# Update issue state (get state IDs via: plane state list -p <PROJECT> -o json)
+plane issue update -p <PROJECT> --work-item-id <UUID> --state <state-id>
 
 # Create a new issue
-python ~/.claude/scripts/plane-create-issue.py --name "<title>" --description "<markdown>" --priority medium
+plane issue create -p <PROJECT> --name "<title>" --description-html "<html>" --priority medium
 
 # Add a comment
-python ~/.claude/scripts/plane-add-comment.py <UUID> --body "<markdown>"
+plane comment add -p <PROJECT> --work-item-id <UUID> --comment-html "<html>"
 ```
 ```
 

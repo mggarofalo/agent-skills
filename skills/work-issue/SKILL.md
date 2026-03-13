@@ -38,10 +38,11 @@ This skill supports two modes. Detect which mode you are in **before starting St
 Fetch the issue:
 
 ```bash
-python ~/.claude/scripts/plane-get-issue.py <ISSUE-ID>
+plane issue get-by-sequence-id --identifier <ISSUE-ID> --expand state,labels,assignees -o json
 ```
 
-Save the UUID from the output for later update/comment commands. Extract the title, description, acceptance criteria, labels, and priority. Summarize it in 2-3 sentences.
+Save the `id` (UUID) from the JSON output for later update/comment commands. Extract the title, description, acceptance criteria, labels, and priority. Summarize it in 2-3 sentences.
+Read `docs/plane.md` to determine the project identifier for `-p` flags in later commands.
 
 Update the issue state to **In Progress** using the `plane` CLI:
 ```bash
@@ -152,14 +153,14 @@ Triage results from **both** bug analysis and React render-cycle QA (if it ran).
 - **CRITICAL or HIGH findings:** These are bugs. Fix them before merging — same as confirmed bugs below.
 - **MEDIUM findings:** File Plane issues for each (same as follow-up recommendations below):
   ```bash
-  python ~/.claude/scripts/plane-create-issue.py --name "<title>" --description "<markdown description>" --priority medium
+  plane issue create -p <PROJECT> --name "<title>" --description-html "<html>" --priority medium
   ```
 
 **Bug analysis findings:**
 
 **If there are follow-up recommendations:** File Plane issues for each:
 ```bash
-python ~/.claude/scripts/plane-create-issue.py --name "<title>" --description "<markdown description>" --priority medium
+plane issue create -p <PROJECT> --name "<title>" --description-html "<html>" --priority medium
 ```
 - **Interactive:** Ask the user which team/project if not obvious.
 - **Autonomous:** Use the same team and project as the source issue.
@@ -183,7 +184,7 @@ python ~/.claude/scripts/plane-create-issue.py --name "<title>" --description "<
 3. **If CI fails:** Review with `gh pr checks` and `gh run view <run-id> --log-failed`. Fix autonomously if you can; ask the user if you're unsure. Commit, push, repeat until CI passes.
 4. After merge, update the Plane issue status:
    ```bash
-   python ~/.claude/scripts/plane-update-state.py <UUID> "Done"
+   plane issue update -p <PROJECT> --work-item-id <UUID> --state <done-state-id>
    ```
 
 **You are done.**
