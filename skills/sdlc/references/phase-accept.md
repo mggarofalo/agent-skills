@@ -79,7 +79,7 @@ Read `~/.claude/skills/sdlc/references/browser-testing.md` for full `agent-brows
 
 ### 6. On Pass — Close the Loop
 
-1. **Post a summary comment** on the Plane issue (use `plane comment add -p <PROJECT> --work-item-id <UUID> --comment-html "<html>"`):
+1. **Post a summary comment** on the Plane issue. Compose the summary as Markdown, convert it to HTML, then post with `plane comment add -p <PROJECT> --work-item-id <UUID> --comment-html "<html>"`. The template:
 
 ```markdown
 ## SDLC Pipeline Summary
@@ -101,6 +101,7 @@ Read `~/.claude/skills/sdlc/references/browser-testing.md` for full `agent-brows
 
 2. **Update the issue status** to "Done":
    ```bash
+   plane state list -p <PROJECT> -o json   # find the state ID for "Done"
    plane issue update -p <PROJECT> --work-item-id <UUID> --state <done-state-id>
    ```
 

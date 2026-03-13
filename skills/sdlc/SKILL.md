@@ -137,7 +137,7 @@ instructions: |
   ### Pipeline Completion
 
   When all 6 phases pass:
-  1. **Post a Plane comment** on the issue with the pipeline summary (use `plane comment add -p <PROJECT> --work-item-id <UUID> --comment-html "<html>"`):
+  1. **Post a Plane comment** on the issue with the pipeline summary. Compose the summary as Markdown, convert it to HTML, then post with `plane comment add -p <PROJECT> --work-item-id <UUID> --comment-html "<html>"`. The template:
 
   ```markdown
   ## SDLC Pipeline Summary
@@ -159,6 +159,7 @@ instructions: |
 
   2. **Update the Plane issue status** to "Done":
      ```bash
+     plane state list -p <PROJECT> -o json   # find the state ID for "Done"
      plane issue update -p <PROJECT> --work-item-id <UUID> --state <done-state-id>
      ```
   3. **Delete the state file** (clean up `.sdlc/<identifier>.md`)

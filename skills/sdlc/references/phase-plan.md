@@ -80,6 +80,7 @@ Append the plan to the state file under `## Phase 1: Plan`:
 
 - Update the issue status to "In Progress":
   ```bash
+  plane state list -p <PROJECT> -o json   # find the state ID for "In Progress"
   plane issue update -p <PROJECT> --work-item-id <UUID> --state <in-progress-state-id>
   ```
 
