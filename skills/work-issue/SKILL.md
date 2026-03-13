@@ -43,6 +43,12 @@ plane issue get -p <PROJECT> <ISSUE-ID> -o json
 
 Save the UUID from the output for later update/comment commands. Extract the title, description, acceptance criteria, labels, and priority. Summarize it in 2-3 sentences.
 
+Update the issue state to **In Progress** using the `plane` CLI:
+```bash
+plane issue update -p <PROJECT> <ISSUE-ID> --state <in-progress-state-id>
+```
+(Use `plane state list -p <PROJECT> -o json` to find the state ID if needed.)
+
 - **Interactive:** If anything is ambiguous, ask before proceeding.
 - **Autonomous:** If anything is ambiguous, make a reasonable assumption and note it. Continue.
 
