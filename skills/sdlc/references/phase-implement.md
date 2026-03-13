@@ -8,7 +8,7 @@ Execute the plan from Phase 1 — write code, create a branch, and commit the ch
 
 - The plan from Phase 1 (in the state file)
 - Project conventions (from AGENTS.md / state file header)
-- The `gitBranchName` from the Linear issue
+- The branch name derived from the Plane issue identifier
 
 ## Steps
 
@@ -22,8 +22,7 @@ Execute the plan from Phase 1 — write code, create a branch, and commit the ch
 
 - Check if a worktree already exists for this issue's branch
 - If not, create a worktree using the project's branch strategy:
-  - Use the `gitBranchName` from the Linear issue as the branch name
-  - If no `gitBranchName`, construct one from the issue identifier (e.g., `mggarofalo/mgg-123-feature-name`)
+  - Construct the branch name from the issue identifier (e.g., `feat/receipts-123-feature-name`)
   - Create the worktree: `git worktree add .claude/worktrees/<branch-name> -b <branch-name>`
 - Change working directory to the worktree
 

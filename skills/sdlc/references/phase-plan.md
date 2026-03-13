@@ -2,12 +2,12 @@
 
 ## Purpose
 
-Understand the Linear issue and produce a structured implementation plan. This phase analyzes requirements, explores the codebase, and documents the approach before any code is written.
+Understand the Plane issue and produce a structured implementation plan. This phase analyzes requirements, explores the codebase, and documents the approach before any code is written.
 
 ## Inputs
 
-- Linear issue (already fetched during initialization — available in state file)
-- Project context (AGENTS.md, LINEAR.md, CLAUDE.md — summarized in state file header)
+- Plane issue (already fetched during initialization — available in state file)
+- Project context (AGENTS.md, docs/plane.md, CLAUDE.md — summarized in state file header)
 - The full codebase
 
 ## Steps
@@ -15,7 +15,7 @@ Understand the Linear issue and produce a structured implementation plan. This p
 ### 1. Understand the Requirements
 
 - Read the issue description, acceptance criteria, and any comments from the state file
-- If the issue has related/blocking issues, fetch them with `mcp__plugin_linear_linear__get_issue` to understand dependencies
+- If the issue has related/blocking issues, fetch them with the `plane` CLI to understand dependencies
 - Identify what the user is actually asking for — separate the "what" from the "how"
 
 ### 2. Explore the Codebase
@@ -73,9 +73,9 @@ Append the plan to the state file under `## Phase 1: Plan`:
 <the structured plan from step 3>
 ```
 
-### 5. Update Linear Issue
+### 5. Update Plane Issue
 
-- Update the issue status to "In Progress" using `mcp__plugin_linear_linear__update_issue`
+- Update the issue status to "In Progress" using the `plane` CLI
 
 ## Pass/Fail Criteria
 

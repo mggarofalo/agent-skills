@@ -64,12 +64,13 @@ def is_git_repo() -> bool:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Launch Claude Code for a Linear issue")
+    parser = argparse.ArgumentParser(description="Launch Claude Code for a Plane issue")
     parser.add_argument("--type", required=True, choices=VALID_TYPES, dest="type_",
                         help="Branch prefix (conventional commit style)")
     parser.add_argument("--issue", required=True, help="Issue ID, e.g. MGG-54")
     parser.add_argument("--title", required=True, help="Issue title")
     parser.add_argument("--prompt", default=None, help="Prompt for autonomous mode")
+    parser.add_argument("--base", default="main", help="Base branch to branch from (default: main)")
     parser.add_argument("--dry-run", action="store_true", help="Print branch name and exit")
     args = parser.parse_args()
 
@@ -83,11 +84,11 @@ def main() -> int:
         print("Error: not inside a git repository.", file=sys.stderr)
         return 1
 
-    # Update main
-    subprocess.run(["git", "checkout", "main"], check=True)
+    # Update base branch
+    subprocess.run(["git", "checkout", args.base], check=True)
     pull = subprocess.run(["git", "pull", "--ff-only"], capture_output=True, text=True)
     if pull.returncode != 0:
-        print(f"Warning: git pull --ff-only failed, continuing on current main.\n{pull.stderr}", file=sys.stderr)
+        print(f"Warning: git pull --ff-only failed, continuing on current {args.base}.\n{pull.stderr}", file=sys.stderr)
 
     # Reuse existing branch if one matches the issue
     existing = find_existing_branch(args.issue)

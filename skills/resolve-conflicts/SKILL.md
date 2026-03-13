@@ -41,11 +41,11 @@ gh pr view <PR> --json number,title,body,headRefName,baseRefName,state,commits
 
 ## Step 2: Read reference issues
 
-Extract Linear issue IDs from the PR title, body, and branch name (pattern: `MGG-\d+`).
+Extract Plane issue IDs from the PR title, body, and branch name (pattern: `RECEIPTS-\d+`).
 
 For each issue ID found:
-1. Use the MCP Linear tool (`get_issue`) to read the issue description, acceptance criteria, and context.
-2. If the MCP tool fails, check `docs/issues/` for archived issue markdown files.
+1. Use the `plane` CLI (e.g., `plane issue view <id>`) to read the issue description, acceptance criteria, and context.
+2. If the CLI fails, check `docs/issues/` for archived issue markdown files.
 
 Also extract context from the PR's commit messages (already fetched in Step 1).
 
@@ -151,7 +151,7 @@ The conflict markers show changes to different parts of the file. Include both s
 These are the hardest — the same lines were modified by both sides for different reasons.
 
 1. Read the conflict markers carefully.
-2. Use the Linear issue context from Step 2 to understand:
+2. Use the Plane issue context from Step 2 to understand:
    - What the PR's changes intended to accomplish
    - What the base branch changes (merged since the PR was opened) intended to accomplish
 3. The PR represents **active work** — its intent should generally be preserved. The base changes represent **merged context** that must be incorporated.

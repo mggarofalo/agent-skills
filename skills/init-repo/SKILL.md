@@ -1,7 +1,7 @@
 ---
 name: init-repo
-description: Initialize a new GitHub repository with CI, guidance files, and config tailored to the project's language/framework. Creates the repo under mggarofalo, sets up GitHub Actions, AGENTS.md, LINEAR.md, CLAUDE.md, .gitignore, .gitattributes, .editorconfig, and pre-commit hooks.
-allowed-tools: Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion, WebSearch, mcp__plugin_linear_linear__list_teams, mcp__plugin_linear_linear__list_projects, mcp__plugin_linear_linear__get_project, mcp__plugin_linear_linear__create_issue, mcp__plugin_linear_linear__create_milestone, mcp__plugin_linear_linear__list_issue_labels
+description: Initialize a new GitHub repository with CI, guidance files, and config tailored to the project's language/framework. Creates the repo under mggarofalo, sets up GitHub Actions, AGENTS.md, docs/plane.md, CLAUDE.md, .gitignore, .gitattributes, .editorconfig, and pre-commit hooks.
+allowed-tools: Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion, WebSearch
 ---
 
 # Init Repo
@@ -16,7 +16,7 @@ The user may provide these as arguments or you should ask:
 2. **Language/framework** (required) — determines templates for CI, linting, .gitignore, .editorconfig
 3. **Description** (optional) — one-line repo description
 4. **Visibility** (optional, default: public) — public or private
-5. **Linear project name** (optional) — if provided, creates LINEAR.md with project reference
+5. **Plane project name** (optional) — if provided, creates docs/plane.md with project reference
 
 ## Conventions (mggarofalo standard)
 
@@ -26,7 +26,7 @@ These conventions apply to ALL repos regardless of language:
 - **Default branch:** `main`
 - **Commit style:** [Conventional Commits](https://www.conventionalcommits.org/)
 - **Branch strategy:** Two-tier (milestone branches → issue branches, squash-merge, worktrees)
-- **Linear team:** Mggarofalo (ID: `a4aff05d-41e6-45dc-b670-cdb485fef765`)
+- **Plane workspace:** mggarofalo
 - **Agent guidance:** AGENTS.md (primary), CLAUDE.md (redirect to AGENTS.md)
 
 ## Execution Steps
@@ -331,24 +331,23 @@ Create `AGENTS.md` with these sections (adapt content to the language):
 
 1. **Header** — "This file provides guidance to AI agents working with code in this repository."
 2. **Prerequisites** — language runtime, build tools, versions
-3. **Development Workflow** — Linear issue management + two-tier branch strategy (copy the branch strategy section verbatim from the Receipts AGENTS.md at `C:\Users\mggar\Source\Receipts\AGENTS.md` lines 20-113, adapting only the project-specific parts like solution names and project paths)
+3. **Development Workflow** — Plane issue management + two-tier branch strategy (copy the branch strategy section verbatim from the Receipts AGENTS.md at `C:\Users\mggar\Source\Receipts\AGENTS.md` lines 20-113, adapting only the project-specific parts like solution names and project paths)
 4. **Build and Test Commands** — language-specific build/test/run commands
 5. **Pre-commit Hooks** — if applicable (lint, format, build, test)
 6. **Architecture** — project structure and key patterns
 7. **Coding Standards** — language-specific conventions
 8. **Commit Message Convention** — Conventional Commits (same as Receipts)
 
-Key: The branch strategy, Linear workflow, worktree usage, and commit convention sections should be nearly identical across all projects. Only build commands, architecture, and coding standards change per language.
+Key: The branch strategy, Plane workflow, worktree usage, and commit convention sections should be nearly identical across all projects. Only build commands, architecture, and coding standards change per language.
 
-### Step 6: Generate LINEAR.md
+### Step 6: Generate docs/plane.md
 
-If a Linear project exists or was specified, create `LINEAR.md` with:
+If a Plane project exists or was specified, create `docs/plane.md` with:
 
-1. Workspace structure (team, project, IDs)
+1. Workspace structure (project identifier, modules)
 2. Labels relevant to the project
-3. Milestones (query from Linear if they exist)
-4. Priority semantics (same across all projects — copy from Receipts)
-5. "How to determine what's next" decision rules (same across all projects)
+3. Priority semantics (same across all projects — copy from Receipts)
+4. "How to determine what's next" decision rules (same across all projects)
 
 ### Step 7: Generate CLAUDE.md
 
@@ -362,7 +361,7 @@ See [AGENTS.md](AGENTS.md) for all development guidance.
 ### Step 8: Initial commit and push
 
 ```bash
-git add .gitignore .gitattributes .editorconfig .github/ AGENTS.md LINEAR.md CLAUDE.md
+git add .gitignore .gitattributes .editorconfig .github/ AGENTS.md docs/plane.md CLAUDE.md
 git commit -m "chore: initial repo setup with CI, guidance, and config"
 git push -u origin main
 ```

@@ -1,14 +1,14 @@
 ---
 name: sdlc
 description: >
-  Run a structured SDLC pipeline for a Linear issue through 6 phases:
+  Run a structured SDLC pipeline for a Plane issue through 6 phases:
   Plan, Implement, Review, Security, QA, and Accept. Each phase uses
   a specialized agent, auto-advances on success, and loops back with
   remediation on failure.
 instructions: |
   # SDLC Pipeline Orchestrator
 
-  This skill runs a structured software development lifecycle pipeline driven by a Linear issue.
+  This skill runs a structured software development lifecycle pipeline driven by a Plane issue.
   It can run the full pipeline or a single phase.
 
   ## Usage
@@ -30,12 +30,12 @@ instructions: |
 
   ## Initialization (All Modes)
 
-  1. **Fetch the Linear issue** using `mcp__plugin_linear_linear__get_issue` with `includeRelations: true`.
-     Extract: title, description, identifier (e.g., MGG-123), URL, acceptance criteria, `gitBranchName`.
+  1. **Fetch the Plane issue** using the `plane` CLI (e.g., `plane issue view RECEIPTS-123`).
+     Extract: title, description, identifier (e.g., RECEIPTS-123), URL, acceptance criteria.
   2. **Discover project context** from the current working directory:
      - Check for a git repo (`git rev-parse --git-dir`)
      - Read `AGENTS.md` if it exists — extract build commands, branch strategy, conventions
-     - Read `LINEAR.md` if it exists — extract team, project, milestone context
+     - Read `docs/plane.md` if it exists — extract project, module, and milestone context
      - Read `CLAUDE.md` if it exists — extract additional project guidance
      - Detect tech stack from file patterns: `*.cs` → .NET, `*.swift` → Swift, `package.json` → Node/React, `*.py` → Python, etc.
   3. **Initialize or read the state file** at `.sdlc/<issue-identifier>.md`:
@@ -133,7 +133,7 @@ instructions: |
   ### Pipeline Completion
 
   When all 6 phases pass:
-  1. **Post a Linear comment** on the issue using `mcp__plugin_linear_linear__create_comment` with this format:
+  1. **Post a Plane comment** on the issue using the `plane` CLI with this format:
 
   ```markdown
   ## SDLC Pipeline Summary
@@ -153,7 +153,7 @@ instructions: |
   **Branch:** `<branch-name>`
   ```
 
-  2. **Update the Linear issue status** to "Done" using `mcp__plugin_linear_linear__update_issue`
+  2. **Update the Plane issue status** to "Done" using the `plane` CLI
   3. **Delete the state file** (clean up `.sdlc/<identifier>.md`)
   4. Report the final result to the user
 
@@ -172,5 +172,5 @@ instructions: |
   - If the issue has no description or acceptance criteria, ask the user before proceeding
 
 user_invocable: true
-argument: "<phase?> <issue-id> — Run the full SDLC pipeline or a specific phase for a Linear issue"
+argument: "<phase?> <issue-id> — Run the full SDLC pipeline or a specific phase for a Plane issue"
 ---

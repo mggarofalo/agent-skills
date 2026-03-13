@@ -2,19 +2,19 @@
 
 ## Purpose
 
-Final quality gate — validate that ALL acceptance criteria from the Linear issue are met by the implementation, tests, and review/security findings. This phase is the last check before the issue is marked as Done.
+Final quality gate — validate that ALL acceptance criteria from the Plane issue are met by the implementation, tests, and review/security findings. This phase is the last check before the issue is marked as Done.
 
 ## Inputs
 
-- The Linear issue (re-fetched for latest description)
+- The Plane issue (re-fetched for latest description)
 - The full state file (all prior phase results)
 - The codebase (to verify implementation details)
 
 ## Steps
 
-### 1. Re-Fetch the Linear Issue
+### 1. Re-Fetch the Plane Issue
 
-Use `mcp__plugin_linear_linear__get_issue` with `includeRelations: true` to get the latest issue description. The description may have been updated since the pipeline started.
+Use the `plane` CLI (e.g., `plane issue view <id>`) to get the latest issue description. The description may have been updated since the pipeline started.
 
 ### 2. Parse Acceptance Criteria
 
@@ -75,7 +75,7 @@ Read `~/.claude/skills/sdlc/references/browser-testing.md` for full `agent-brows
 
 ### 6. On Pass — Close the Loop
 
-1. **Post a summary comment** on the Linear issue using `mcp__plugin_linear_linear__create_comment`:
+1. **Post a summary comment** on the Plane issue using the `plane` CLI:
 
 ```markdown
 ## SDLC Pipeline Summary
@@ -95,7 +95,7 @@ Read `~/.claude/skills/sdlc/references/browser-testing.md` for full `agent-brows
 **Branch:** `<branch-name>`
 ```
 
-2. **Update the issue status** to "Done" using `mcp__plugin_linear_linear__update_issue`
+2. **Update the issue status** to "Done" using the `plane` CLI
 
 3. **Clean up the state file:** Delete `.sdlc/<identifier>.md`
 
@@ -140,4 +140,4 @@ Read `~/.claude/skills/sdlc/references/browser-testing.md` for full `agent-brows
 - This phase should be thorough but fair — don't fail criteria that are clearly met just because the evidence isn't perfectly documented
 - If a criterion is ambiguous, interpret it reasonably in the context of the feature
 - Don't introduce new requirements beyond what's in the issue description
-- The Linear comment should be a concise summary, not a dump of the full state file
+- The Plane comment should be a concise summary, not a dump of the full state file

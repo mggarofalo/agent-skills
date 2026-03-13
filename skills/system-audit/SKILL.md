@@ -67,7 +67,7 @@ Read every command in `$COMMANDS_DIR/*.md`. Read every agent in `$AGENTS_DIR/` (
 ### 1b. Overlap Detection
 
 Compare every pair of skills for functional overlap. Check:
-- Do two skills read the same Linear issue and create a branch? (likely overlap)
+- Do two skills read the same Plane issue and create a branch? (likely overlap)
 - Do a skill and a command invoke the same agent? (redundancy)
 - Does a skill duplicate a built-in plugin's capability? (check plugin list in `$SETTINGS`)
 
