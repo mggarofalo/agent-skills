@@ -348,6 +348,25 @@ If a Plane project exists or was specified, create `docs/plane.md` with:
 2. Labels relevant to the project
 3. Priority semantics (same across all projects — copy from Receipts)
 4. "How to determine what's next" decision rules (same across all projects)
+5. CLI Quick Reference section:
+
+```markdown
+## CLI Quick Reference
+
+```bash
+# Fetch an issue
+python ~/.claude/scripts/plane-get-issue.py <ISSUE-ID>
+
+# Update issue state
+python ~/.claude/scripts/plane-update-state.py <UUID> "<State Name>"
+
+# Create a new issue
+python ~/.claude/scripts/plane-create-issue.py --name "<title>" --description "<markdown>" --priority medium
+
+# Add a comment
+python ~/.claude/scripts/plane-add-comment.py <UUID> --body "<markdown>"
+```
+```
 
 ### Step 7: Generate CLAUDE.md
 

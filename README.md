@@ -9,6 +9,7 @@ skills/          -> ~/.claude/skills
 commands/        -> ~/.claude/commands
 agents/          -> ~/.claude/agents
 hooks/           -> ~/.claude/hooks
+scripts/         -> ~/.claude/scripts
 config/
   statusline.py    -> ~/.claude/statusline-command.py
   keybindings.json -> ~/.claude/keybindings.json
@@ -78,7 +79,7 @@ Since `~/.claude/skills`, `commands`, and `agents` are symlinks into this repo, 
 | **resolve-conflicts** | Resolve merge conflicts on a PR by rebasing, resolving per-category, and force-pushing |
 | **sdlc** | Structured SDLC pipeline: Plan, Implement, Review, Security, QA, Accept |
 | **system-audit** | Audit Claude Code system for staleness, redundancy, gaps, and token waste |
-| **work-issue** | End-to-end Linear issue implementation workflow |
+| **work-issue** | End-to-end Plane issue implementation workflow |
 
 ### Commands
 
@@ -109,3 +110,12 @@ Since `~/.claude/skills`, `commands`, and `agents` are symlinks into this repo, 
 | **statusline.py** | Status line with git branch, worktree detection, context usage bar |
 | **keybindings.json** | Custom Claude Code keybindings |
 | **settings.json.example** | Template with hooks, plugins, and statusline configuration |
+
+### Scripts
+
+| Script | Description |
+|--------|-------------|
+| **plane-get-issue.py** | Fetch issue by sequence ID, output formatted summary |
+| **plane-update-state.py** | Update issue state by name |
+| **plane-create-issue.py** | Create issue with markdown description and label resolution |
+| **plane-add-comment.py** | Post markdown comment on an issue |

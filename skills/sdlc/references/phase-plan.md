@@ -15,7 +15,10 @@ Understand the Plane issue and produce a structured implementation plan. This ph
 ### 1. Understand the Requirements
 
 - Read the issue description, acceptance criteria, and any comments from the state file
-- If the issue has related/blocking issues, fetch them with the `plane` CLI to understand dependencies
+- If the issue has related/blocking issues, fetch them to understand dependencies:
+  ```bash
+  python ~/.claude/scripts/plane-get-issue.py <RELATED-ID>
+  ```
 - Identify what the user is actually asking for — separate the "what" from the "how"
 
 ### 2. Explore the Codebase
@@ -75,7 +78,10 @@ Append the plan to the state file under `## Phase 1: Plan`:
 
 ### 5. Update Plane Issue
 
-- Update the issue status to "In Progress" using the `plane` CLI
+- Update the issue status to "In Progress":
+  ```bash
+  python ~/.claude/scripts/plane-update-state.py <UUID> "In Progress"
+  ```
 
 ## Pass/Fail Criteria
 

@@ -6,7 +6,7 @@ allowed-tools: Bash, Read
 
 Run the adversarial PR bug-finder agent. This takes 5-15 minutes.
 
-CRITICAL: The argument is a **GitHub PR number** (e.g., `125`), a GitHub PR URL, or a diff file path. It is NEVER a Linear issue ID. Do NOT interpret bare numbers as Linear issues (e.g., do NOT look up MGG-125). Always pass the argument directly to the Python pipeline below — do NOT attempt manual bug analysis yourself.
+CRITICAL: The argument is a **GitHub PR number** (e.g., `125`), a GitHub PR URL, or a diff file path. It is NEVER a Plane issue ID. Do NOT interpret bare numbers as Plane issues (e.g., do NOT look up MGG-125). Always pass the argument directly to the Python pipeline below — do NOT attempt manual bug analysis yourself.
 
 IMPORTANT execution rules:
 - You MUST run the Python pipeline below. Do NOT skip it and do your own analysis.

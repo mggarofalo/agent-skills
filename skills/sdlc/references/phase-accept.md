@@ -14,7 +14,11 @@ Final quality gate — validate that ALL acceptance criteria from the Plane issu
 
 ### 1. Re-Fetch the Plane Issue
 
-Use the `plane` CLI (e.g., `plane issue view <id>`) to get the latest issue description. The description may have been updated since the pipeline started.
+Fetch the latest issue description (it may have been updated since the pipeline started):
+
+```bash
+python ~/.claude/scripts/plane-get-issue.py <ISSUE-ID>
+```
 
 ### 2. Parse Acceptance Criteria
 
@@ -75,7 +79,7 @@ Read `~/.claude/skills/sdlc/references/browser-testing.md` for full `agent-brows
 
 ### 6. On Pass — Close the Loop
 
-1. **Post a summary comment** on the Plane issue using the `plane` CLI:
+1. **Post a summary comment** on the Plane issue (use `python ~/.claude/scripts/plane-add-comment.py <UUID> --body "<markdown>"`):
 
 ```markdown
 ## SDLC Pipeline Summary
@@ -95,7 +99,10 @@ Read `~/.claude/skills/sdlc/references/browser-testing.md` for full `agent-brows
 **Branch:** `<branch-name>`
 ```
 
-2. **Update the issue status** to "Done" using the `plane` CLI
+2. **Update the issue status** to "Done":
+   ```bash
+   python ~/.claude/scripts/plane-update-state.py <UUID> "Done"
+   ```
 
 3. **Clean up the state file:** Delete `.sdlc/<identifier>.md`
 

@@ -44,8 +44,11 @@ gh pr view <PR> --json number,title,body,headRefName,baseRefName,state,commits
 Extract Plane issue IDs from the PR title, body, and branch name (pattern: `RECEIPTS-\d+`).
 
 For each issue ID found:
-1. Use the `plane` CLI (e.g., `plane issue view <id>`) to read the issue description, acceptance criteria, and context.
-2. If the CLI fails, check `docs/issues/` for archived issue markdown files.
+1. Fetch the issue:
+   ```bash
+   python ~/.claude/scripts/plane-get-issue.py <ID>
+   ```
+2. If the script fails (exit code non-zero), check `docs/issues/` for archived issue markdown files.
 
 Also extract context from the PR's commit messages (already fetched in Step 1).
 

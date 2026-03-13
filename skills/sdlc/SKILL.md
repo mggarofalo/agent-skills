@@ -30,7 +30,11 @@ instructions: |
 
   ## Initialization (All Modes)
 
-  1. **Fetch the Plane issue** using the `plane` CLI (e.g., `plane issue view RECEIPTS-123`).
+  1. **Fetch the Plane issue:**
+     ```bash
+     python ~/.claude/scripts/plane-get-issue.py <ISSUE-ID>
+     ```
+     Save the UUID from the output for subsequent update and comment commands.
      Extract: title, description, identifier (e.g., RECEIPTS-123), URL, acceptance criteria.
   2. **Discover project context** from the current working directory:
      - Check for a git repo (`git rev-parse --git-dir`)
@@ -133,7 +137,7 @@ instructions: |
   ### Pipeline Completion
 
   When all 6 phases pass:
-  1. **Post a Plane comment** on the issue using the `plane` CLI with this format:
+  1. **Post a Plane comment** on the issue with this format (use `python ~/.claude/scripts/plane-add-comment.py <UUID> --body-file .sdlc/<id>-summary.md` or `--body` with inline content):
 
   ```markdown
   ## SDLC Pipeline Summary
@@ -153,7 +157,10 @@ instructions: |
   **Branch:** `<branch-name>`
   ```
 
-  2. **Update the Plane issue status** to "Done" using the `plane` CLI
+  2. **Update the Plane issue status** to "Done":
+     ```bash
+     python ~/.claude/scripts/plane-update-state.py <UUID> "Done"
+     ```
   3. **Delete the state file** (clean up `.sdlc/<identifier>.md`)
   4. Report the final result to the user
 
