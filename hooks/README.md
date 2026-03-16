@@ -26,13 +26,21 @@ Blocks shell commands that have dedicated Claude Code tools:
 
 Blocks file tools (Read, Edit, Write, Glob, Grep) from escaping a git worktree. When an agent runs inside `.claude/worktrees/<name>/`, all file operations must target the worktree — not the original repo root.
 
-### block-destructive-git.py
+### block-destructive-ops.py
 
-Blocks high-consequence git commands that are hard to reverse:
+Blocks high-consequence commands that are hard or impossible to reverse. Designed as the safety net for `--dangerously-skip-permissions` mode.
+
+**Git:**
 - `git reset --hard` (destroys uncommitted changes)
 - `git push --force` to main/master (rewrites shared history; `--force-with-lease` and feature branches are allowed)
 - `git clean -f` (permanently deletes untracked files)
 - `git checkout -- .` / `git restore .` (discards all unstaged changes)
+
+**Filesystem:**
+- `rm -rf` with broad targets: `.`, `..`, `~`, `/`, `/*`, `*` (catastrophic data loss; specific paths like `node_modules` are allowed)
+
+**Network:**
+- `curl`/`wget` piped to `bash`/`sh` (arbitrary code execution)
 
 Strips quoted strings and heredoc content before matching to avoid false positives.
 
