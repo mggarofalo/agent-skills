@@ -29,20 +29,36 @@ Blocks file tools (Read, Edit, Write, Glob, Grep) from escaping a git worktree. 
 ### block-destructive-ops.py
 
 Blocks high-consequence commands that are hard or impossible to reverse. Designed as the safety net for `--dangerously-skip-permissions` mode.
+Matches `Bash`, `Read`, `Write`, and `Edit` tools.
 
-**Git:**
+**Git (Bash):**
 - `git reset --hard` (destroys uncommitted changes)
 - `git push --force` to main/master (rewrites shared history; `--force-with-lease` and feature branches are allowed)
 - `git clean -f` (permanently deletes untracked files)
 - `git checkout -- .` / `git restore .` (discards all unstaged changes)
 
-**Filesystem:**
+**Filesystem (Bash):**
 - `rm -rf` with broad targets: `.`, `..`, `~`, `/`, `/*`, `*` (catastrophic data loss; specific paths like `node_modules` are allowed)
 
-**Network:**
+**Network (Bash):**
 - `curl`/`wget` piped to `bash`/`sh` (arbitrary code execution)
+- `curl -d @file` / `curl --data @file` (data exfiltration)
 
-Strips quoted strings and heredoc content before matching to avoid false positives.
+**Sensitive files (Read, Write, Edit):**
+- `~/.ssh/**`, `~/.aws/**`, `~/.gnupg/**`, `~/.config/gh/**` (authdirectories)
+- `~/.netrc`
+- `.env`, `.env.*` (except `.env.example`, `.env.template`,`.env.sample`)
+- `*.pem`, `*.key`, `*.pfx`, `*.p12` (except Read under `node_modules/`)
+- `.npmrc`, `.pypirc` (package manager auth)
+- `id_rsa*`, `id_ed25519*`, `id_ecdsa*` (SSH keys)
+- `credentials.json`, `service-account*.json` (cloud credentials)
+
+**Self-modification (Write, Edit only — Read is allowed):**
+- `~/.claude/hooks/**` (could disable this very hook)
+- `~/.claude/settings.json`, `~/.claude/settings.local.json`
+- `**/CLAUDE.md` (could rewrite safety instructions)
+
+Paths are canonicalized with `os.path.realpath()` to defeat `../` traversal and symlink evasion. Strips quoted strings and heredoc content before matching Bash commands to avoid false positives.
 
 ## Adding a new hook
 
