@@ -75,6 +75,7 @@ Since `~/.claude/skills`, `commands`, and `agents` are symlinks into this repo, 
 | **owasp-top-10** | OWASP Top 10 security audit (static, dependency, and runtime) |
 | **powershell-expert** | PowerShell scripting, modules, and GUI development reference |
 | **reflect** | Session retrospective — extract learnings, update memory and guidance files |
+| **release** | Automate develop-to-main release: pre-flight checks, PR, CI, merge, monitor pipeline |
 | **resolve-conflicts** | Resolve merge conflicts on a PR by rebasing, resolving per-category, and force-pushing |
 | **sdlc** | Structured SDLC pipeline: Plan, Implement, Review, Security, QA, Accept |
 | **system-audit** | Audit Claude Code system for staleness, redundancy, gaps, and token waste |
