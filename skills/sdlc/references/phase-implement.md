@@ -62,13 +62,13 @@ Execute the plan from Phase 1 — write code, create a branch, and commit the ch
 
 Before composing the commit message, determine whether the repo restricts Conventional Commits scopes. Picking a scope from the feature name (e.g., `ynab`, `auth`, `checkout`) without checking the allowlist is the most common way this phase produces PRs that fail CI. Check in this order and stop at the first hit:
 
-1. **GitHub Actions workflows** — search `.github/workflows/*.yml` for `amannn/action-semantic-pull-request`. If found, extract the `scopes:` list from the action's `with:` block (it may be newline-separated or comma-separated).
+1. **GitHub Actions workflows** — search `.github/workflows/*.yml` for `amannn/action-semantic-pull-request`. If found and a `scopes:` list is present in the action's `with:` block, extract it (newline- or comma-separated) and treat scopes as restricted — this is a hit. If the action is found but has no `scopes:` block, treat scopes as unrestricted and stop — this is still a hit (CI is not enforcing scopes).
 2. **commitlint config** — check `commitlint.config.js`, `commitlint.config.cjs`, `commitlint.config.mjs`, `commitlint.config.ts`, `.commitlintrc`, `.commitlintrc.js`, `.commitlintrc.json`, `.commitlintrc.yml`. Extract the `scope-enum` rule values.
 3. **package.json** — check for a top-level `commitlint` key with a `rules.scope-enum` entry.
 4. **Git hooks** — read `.husky/commit-msg`, `.githooks/commit-msg`, or any `commit-msg` hook referenced from `core.hooksPath`. Look for explicit scope validation (e.g., a regex or `case` statement against a fixed list). Note: the pre-commit hook's allowlist may differ from the CI workflow's allowlist — always prefer the CI allowlist when both are present, since CI is the gate that blocks merge.
 5. **Fallback** — if nothing matches, treat scopes as unrestricted.
 
-Record the discovered allowlist (or `unrestricted`) in the state file under Phase 2 as `**Allowed Scopes:** <list>`.
+Note the discovered allowlist (or `unrestricted`) and its source in working memory for use in step 5b and later recording in the state file as part of Step 6. Do not write to the state file here — Step 6 is the single write point for the Phase 2 block.
 
 #### 5b. Select a scope from the allowlist
 
@@ -77,7 +77,7 @@ Pick a scope from the discovered allowlist that best matches the file paths touc
 - Prefer the scope whose name maps most directly to the primary directory in the diff (e.g., changes rooted in `src/Application/` → `application`, `src/Infrastructure/` → `infrastructure`, `src/Client/` → `client`).
 - If changes span multiple allowed scopes, pick the one with the largest share of modified lines, or the most architecturally significant layer.
 - **Do not** pick a scope based on the feature or integration name unless that name is in the allowlist. A feature-name scope like `ynab` is a natural choice but will bounce at CI if the allowlist is `api, client, domain, application, infrastructure, …`.
-- If no allowed scope matches the diff, **fail the commit step**: print the allowed scopes and the files changed, and ask the user which scope to use via `AskUserQuestion`. In autonomous mode, pick the most architecturally significant allowed scope, note the assumption in the state file under `**Scope Assumption:**`, and proceed.
+- If no allowed scope matches the diff, **fail the commit step**: print the allowed scopes and the files changed, and ask the user which scope to use via `AskUserQuestion`. In autonomous mode, pick the most architecturally significant allowed scope, record the assumption for later writing to the Phase 2 block's `**Scope Assumption:**` field in Step 6, and proceed.
 
 #### 5c. Compose and commit
 
@@ -96,6 +96,7 @@ Append implementation details to the state file:
 **Branch:** <branch-name>
 **Worktree:** <worktree-path>
 **Allowed Scopes:** <discovered list, or `unrestricted`, plus source (workflow yaml / commitlint / package.json / hooks / fallback)>
+**Scope Assumption:** <only if autonomous mode picked a scope because no allowed scope cleanly matched the diff; else omit this line>
 **Commits:**
 - `<hash>`: <commit message>
 **Files Changed:**
