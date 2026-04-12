@@ -71,6 +71,7 @@ Since `~/.claude/skills`, `commands`, and `agents` are symlinks into this repo, 
 |-------|-------------|
 | **accessibility-audit** | WCAG 2.1 AA compliance audit using agent-browser and static analysis |
 | **agent-skills** | Scaffold, remove, or list skills, hooks, commands, agents, and config |
+| **fix-develop** | Never-fix-incidental-breakage workflow: stash, branch, fix, PR, rebase, resume |
 | **init-repo** | GitHub repo scaffolding with CI, guidance files, and config per language |
 | **owasp-top-10** | OWASP Top 10 security audit (static, dependency, and runtime) |
 | **powershell-expert** | PowerShell scripting, modules, and GUI development reference |
