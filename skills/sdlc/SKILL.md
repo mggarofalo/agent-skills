@@ -11,6 +11,24 @@ instructions: |
   This skill runs a structured software development lifecycle pipeline driven by a Plane issue.
   It can run the full pipeline or a single phase.
 
+  ## Critical Rule: Never Fix Incidental Breakage in a Feature PR
+
+  If at any phase you encounter pre-existing build, test, or lint breakage on your branch that is **unrelated to the assigned issue scope**:
+
+  1. **STOP.** Do not fix it as a side effect of your work.
+  2. Use the `/fix-develop` skill (or invoke its workflow manually):
+     - Stash current work
+     - Branch from develop (or main if no develop branch exists)
+     - Make the minimal fix
+     - Open a PR with `fix(scope): ...` referencing the breakage (no Plane issue required for trivial fixes)
+     - Wait for merge
+     - Rebase your original branch onto the fix
+     - Pop stash and resume
+
+  **Why:** Incidental fixes in feature PRs cause collateral merge damage when parallel agents fix the same breakage differently. Each agent's local fix is rational; the divergence at merge time produces cascading conflicts. Because the SDLC pipeline is the higher-stakes path, this rule is especially important here — Review/Security/QA phases must never be used as cover for unrelated fixes.
+
+  **Exception:** If the breakage is one line and clearly typo-level (e.g., a missing semicolon you can fix in 30 seconds), you may fix it with a separate commit in your branch labeled `fix: incidental ...`. But if it touches more than one file or requires judgment, route through `/fix-develop`.
+
   ## Usage
 
   - `/sdlc <issue-id>` — Run the full 6-phase pipeline

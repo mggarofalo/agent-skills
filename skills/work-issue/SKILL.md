@@ -33,6 +33,26 @@ This skill supports two modes. Detect which mode you are in **before starting St
 
 ---
 
+## Critical Rule: Never Fix Incidental Breakage in a Feature PR
+
+If you encounter pre-existing build, test, or lint breakage on your branch that is **unrelated to your assigned issue scope**:
+
+1. **STOP.** Do not fix it as a side effect of your work.
+2. Use the `/fix-develop` skill (or invoke its workflow manually):
+   - Stash current work
+   - Branch from develop (or main if no develop branch exists)
+   - Make the minimal fix
+   - Open a PR with `fix(scope): ...` referencing the breakage (no Plane issue required for trivial fixes)
+   - Wait for merge
+   - Rebase your original branch onto the fix
+   - Pop stash and resume
+
+**Why:** Incidental fixes in feature PRs cause collateral merge damage when parallel agents fix the same breakage differently. Each agent's local fix is rational; the divergence at merge time produces cascading conflicts.
+
+**Exception:** If the breakage is one line and clearly typo-level (e.g., a missing semicolon you can fix in 30 seconds), you may fix it with a separate commit in your branch labeled `fix: incidental ...`. But if it touches more than one file or requires judgment, route through `/fix-develop`.
+
+---
+
 ## Step 1: Read the issue
 
 Fetch the issue using the `plane` CLI (determine the project identifier from `docs/plane.md` or the issue ID prefix):
@@ -264,13 +284,24 @@ Projects with frontend dependencies should configure a `WorktreeCreate` hook in 
 
 ### What the parent agent should do
 
-1. **Spawn** one agent per issue, all in parallel with `isolation: "worktree"`.
-2. **Wait** for agents to complete. Each returns a PR URL and summary.
-3. **Review** the PRs (or ask the user to review them).
-4. **Merge** approved PRs and update Plane issue status.
+1. **Pre-flight checks** (see below) — serialize instead of parallelizing if scopes collide or develop is red.
+2. **Spawn** one agent per issue, all in parallel with `isolation: "worktree"`.
+3. **Wait** for agents to complete. Each returns a PR URL and summary.
+4. **Review** the PRs (or ask the user to review them).
+5. **Merge** approved PRs and update Plane issue status.
+
+### Pre-flight checks before launching parallel work-issue agents
+
+**You must run these checks before dispatching any parallel agents. If any check fails, do NOT parallelize.**
+
+1. **Read `.parallel-sensitive`** in the target repo root (if it exists). This file lists paths that are known to produce collateral merge damage when modified by parallel agents (e.g., shared config, lockfiles, entity base classes, DI registration files). One glob or path per line; lines starting with `#` are comments.
+2. **Predict scope for each pending issue.** Read each issue's description and infer which files it will touch. Be explicit — write the predicted file set into your plan.
+3. **Check for scope collisions against `.parallel-sensitive`.** If two pending scopes both intersect a path listed in `.parallel-sensitive`, do NOT parallelize those two issues — serialize them instead.
+4. **Check develop health.** If develop (or main, for repos without develop) is currently red (failing CI, broken build, failing tests), do NOT dispatch parallel agents. Fix develop first via `/fix-develop`, wait for it to merge, then dispatch.
 
 ### Constraints
 
 - Only parallelize issues that don't touch the same files. If two issues modify the same code, work them sequentially.
 - The parent agent should not duplicate work the subagent is doing.
 - Each agent handles its own bug analysis and follow-up issue filing.
+- Each subagent must honor the **Critical Rule: Never Fix Incidental Breakage in a Feature PR** — if it hits pre-existing breakage, it routes through `/fix-develop` instead of fixing in-branch.
