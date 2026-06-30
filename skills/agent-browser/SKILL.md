@@ -669,14 +669,14 @@ Lightpanda does not support `--extension`, `--profile`, `--state`, or `--allow-f
 
 ## Ready-to-Use Templates
 
-| Template                                                                 | Description                         |
-| ------------------------------------------------------------------------ | ----------------------------------- |
-| [templates/form-automation.sh](templates/form-automation.sh)             | Form filling with validation        |
-| [templates/authenticated-session.sh](templates/authenticated-session.sh) | Login once, reuse state             |
-| [templates/capture-workflow.sh](templates/capture-workflow.sh)           | Content extraction with screenshots |
+| Template                                                                   | Description                         |
+| -------------------------------------------------------------------------- | ----------------------------------- |
+| [templates/form-automation.ps1](templates/form-automation.ps1)             | Form filling with validation        |
+| [templates/authenticated-session.ps1](templates/authenticated-session.ps1) | Login once, reuse state             |
+| [templates/capture-workflow.ps1](templates/capture-workflow.ps1)           | Content extraction with screenshots |
 
-```bash
-./templates/form-automation.sh https://example.com/form
-./templates/authenticated-session.sh https://app.example.com/login
-./templates/capture-workflow.sh https://example.com ./output
+```powershell
+./templates/form-automation.ps1 https://example.com/form
+./templates/authenticated-session.ps1 https://app.example.com/login
+./templates/capture-workflow.ps1 https://example.com ./output
 ```
