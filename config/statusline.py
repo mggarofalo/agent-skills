@@ -166,7 +166,78 @@ if agent_name:
 if session_name:
     line2 += f"  {DIM}💬 {session_name}{RESET}"
 
+# ── Line 3: cost + duration + tokens ──────────────────────────────────────────
+cost        = data.get("cost", {}).get("total_cost_usd", 0) or 0
+duration_ms = data.get("cost", {}).get("total_duration_ms", 0) or 0
+total_in    = data.get("context_window", {}).get("total_input_tokens", 0) or 0
+total_out   = data.get("context_window", {}).get("total_output_tokens", 0) or 0
+
+total_sec = int(duration_ms) // 1000
+if total_sec >= 3600:
+    hrs, rem = total_sec // 3600, total_sec % 3600
+    duration_str = f"{hrs}h{rem // 60:02d}m"
+else:
+    duration_str = f"{total_sec // 60}m{total_sec % 60:02d}s"
+
+total_tokens = int(total_in) + int(total_out)
+if total_tokens >= 1_000_000:
+    tok_str = f"{total_tokens / 1_000_000:.1f}M"
+elif total_tokens >= 1_000:
+    tok_str = f"{total_tokens / 1_000:.0f}k"
+else:
+    tok_str = str(total_tokens)
+
+line3 = (
+    f"{GREEN}💰 ${cost:.2f}{RESET}"
+    f"  {CYAN}⏱️  {duration_str}{RESET}"
+    f"  {BLUE}📊 {tok_str} tok{RESET}"
+)
+
+# ── Line 4: literary vibes — deterministic by context % ───────────────────────
+# Mood escalates with context usage across five worlds.
+try:
+    pct = int(round(float(used_str))) if used_str else 0
+except ValueError:
+    pct = 0
+
+VIBES = [
+    # (max_pct, emoji, quote)
+    ( 5, "🧁", "Friar Hugo is laying out scones and meadowcream in Cavern Hole"),
+    (10, "🦁", "Further up and further in!"),
+    (15, "🧙", "Not all those who wander are lost"),
+    (20, "🏜️", "A beginning is the time for taking the most delicate care"),
+    (25, "📜", "The Consul listened to the roses singing in the ship-tree forest"),
+    (30, "🐿️", "The Dibbuns are splashing in the Abbey pond"),
+    (35, "🚪", "One day you'll be old enough to start reading fairy tales again"),
+    (40, "🌿", "The world is indeed full of peril, and in it there are many dark places"),
+    (45, "🪱", "Deep in the human unconscious is the need for a logical universe"),
+    (50, "📖", "Between the pain and its absence, there is a universe of meaning"),
+    (55, "🍺", "October Ale is flowing freely in Great Hall"),
+    (58, "⛵", "To live in a world where Aslan is on the move — anything can happen"),
+    (62, "🗡️", "Even the smallest person can change the course of the future"),
+    (66, "⏳", "The spice must flow"),
+    (70, "🌀", "The Time Tombs are opening"),
+    (74, "🔭", "Watchers on the walltop scan the horizon"),
+    (78, "❄️", "Always winter and never Christmas"),
+    (82, "🔥", "The beacons of Minas Tirith! The beacons are lit!"),
+    (86, "⚔️", "Fear is the mind-killer — face it and let it pass through you"),
+    (90, "🐀", "The Shrike stirs in the Valley of the Time Tombs"),
+    (93, "🔔", "Ring the bells! Man the ramparts! Redwaaaall!"),
+    (96, "🦅", "The eagles are coming!"),
+    (98, "🐛", "The sleeper has awakened"),
+    (100,"🗡️", "Martin's sword has been drawn from the tapestry"),
+]
+
+for max_pct, emoji, msg in VIBES:
+    if pct <= max_pct:
+        line4 = f"{emoji} {DIM}{msg}{RESET}"
+        break
+else:
+    line4 = f"{VIBES[-1][1]} {DIM}{VIBES[-1][2]}{RESET}"
+
 # ── Output ────────────────────────────────────────────────────────────────────
 sys.stdout.reconfigure(encoding="utf-8")
 print(line1)
 print(line2)
+print(line3)
+print(line4)
