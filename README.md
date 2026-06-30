@@ -71,6 +71,7 @@ Since `~/.claude/skills`, `commands`, and `agents` are symlinks into this repo, 
 |-------|-------------|
 | **accessibility-audit** | WCAG 2.1 AA compliance audit using agent-browser and static analysis |
 | **agent-skills** | Scaffold, remove, or list skills, hooks, commands, agents, and config |
+| **clear-writing** | Plain-English writing style for reports, summaries, and guidance |
 | **fix-develop** | Never-fix-incidental-breakage workflow: stash, branch, fix, PR, rebase, resume |
 | **init-repo** | GitHub repo scaffolding with CI, guidance files, and config per language |
 | **owasp-top-10** | OWASP Top 10 security audit (static, dependency, and runtime) |
@@ -96,12 +97,11 @@ Since `~/.claude/skills`, `commands`, and `agents` are symlinks into this repo, 
 
 ### Hooks
 
-| Hook | Matches | Description |
-|------|---------|-------------|
-| **reject-compound-bash** | `Bash` | Blocks `&&`/`||`/`;` chaining, `bash -c` wrappers, `npx --prefix` |
-| **normalize-git-dash-c** | `Bash` | Blocks `git -C` and `git -c` flags that break permission matching |
-| **prefer-dedicated-tools** | `Bash` | Blocks `find`/`grep`/`cat`/`sed`/etc. in favor of Glob/Grep/Read/Edit |
-| **enforce-worktree-paths** | `Read\|Edit\|Write\|Glob\|Grep` | Prevents agents in worktrees from reading/writing the original repo root |
+| Hook | Event / Matches | Description |
+|------|-----------------|-------------|
+| **block-destructive-ops** | PreToolUse · `Bash\|Read\|Edit\|Write` | Safety net for `--dangerously-skip-permissions`: blocks destructive git/filesystem/network ops, `bash -c`/`sh -c` wrapper evasion, and reads/writes of sensitive files |
+| **enforce-worktree-paths** | PreToolUse · `Read\|Edit\|Write\|Glob\|Grep` | Prevents agents in worktrees from reading/writing the original repo root |
+| **session-end-export** | SessionEnd | Exports the session to Obsidian markdown and updates the QMD index (via the `recall` skill) |
 
 ### Config
 

@@ -1,26 +1,14 @@
 # Hooks
 
-PreToolUse hooks that run before tool calls in Claude Code. Each hook reads a JSON payload from stdin and either exits silently (allow) or writes a deny decision to stdout.
+Hooks that run around tool calls in Claude Code. Each hook reads a JSON payload from stdin and either exits silently (allow) or writes a decision to stdout.
 
 ## How they work
 
-Registered in `~/.claude/settings.json` under `hooks.PreToolUse`. Each hook runs with a 10-second timeout. If a hook denies a command, Claude Code receives the denial reason and adjusts its approach.
+Registered in `~/.claude/settings.json` under `hooks` (`PreToolUse` for the guard hooks, `SessionEnd` for the export hook). Each hook runs with a short timeout. If a `PreToolUse` hook denies a command, Claude Code receives the denial reason and adjusts its approach.
+
+> **Note:** `bash -c` / `sh -c` wrapper scanning and the destructive-pattern checks were consolidated into `block-destructive-ops.py`. The former standalone `reject-compound-bash.py`, `prefer-dedicated-tools.py`, and `normalize-git-dash-c.py` hooks have been removed.
 
 ## Hook inventory
-
-### reject-compound-bash.py
-
-Blocks Bash commands that hide intent from the permission system:
-- `bash -c` / `sh -c` wrappers (hides real commands from permission matching)
-- `npx --prefix <path>` (unnecessary flag that breaks permission matching)
-
-### prefer-dedicated-tools.py
-
-Blocks shell commands that have dedicated Claude Code tools:
-- `find` → Glob
-- `grep` / `rg` → Grep
-- `cat` / `head` / `tail` → Read
-- `sed` / `awk` → Edit / Grep
 
 ### enforce-worktree-paths.py
 
@@ -59,6 +47,10 @@ Matches `Bash`, `Read`, `Write`, and `Edit` tools.
 - `**/CLAUDE.md` (could rewrite safety instructions)
 
 Paths are canonicalized with `os.path.realpath()` to defeat `../` traversal and symlink evasion. Strips quoted strings and heredoc content before matching Bash commands to avoid false positives.
+
+### session-end-export.py
+
+`SessionEnd` hook (not `PreToolUse`). Exports the finished session to Obsidian markdown via the `recall` skill's `export_sessions.py`, then updates the QMD index. Runs asynchronously so it doesn't block terminal exit. Failures are swallowed so a missing QMD/recall setup never blocks session end.
 
 ## Adding a new hook
 
