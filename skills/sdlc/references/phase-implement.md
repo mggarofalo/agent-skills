@@ -42,6 +42,7 @@ Execute the plan from Phase 1 — write code, create a branch, and commit the ch
   - Don't add unnecessary abstractions or over-engineer
   - Handle errors at system boundaries only
   - Don't add comments unless the logic is non-obvious
+  - **React frontend code**: Read `docs/react/` before implementing. Key rules: derive state during render instead of `useEffect` + `useState`; handle side effects in event handlers, not Effects; wrap hook return values in `useCallback`/`useMemo` for stability. See `docs/react/effects.md` for the full anti-pattern list.
 
 ### 4. Build Verification
 

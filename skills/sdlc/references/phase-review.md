@@ -51,6 +51,19 @@ For each changed file, evaluate:
 - Are error messages helpful for debugging?
 - Are resources properly disposed/cleaned up?
 
+#### React Render-Cycle Correctness (frontend files only)
+
+If the diff includes `.tsx` or `.ts` files under `src/client/`, read `docs/react/effects.md` and `docs/react/state-management.md`, then check:
+
+- **Unnecessary Effects**: Is any `useEffect` setting state that could be derived during render, chaining to another Effect, or running event-specific logic (POST, toast, navigation)?
+- **Derived state**: Is any `useState` storing a value calculable from existing props/state?
+- **Props mirrored in state**: Is `useState(prop)` used without the prop being named `initial*` or `default*`?
+- **Hook return stability**: Do new/modified custom hooks wrap returned functions in `useCallback` and returned objects in `useMemo`? (See `docs/react/custom-hooks.md`)
+- **Effect correctness**: Do legitimate Effects have cleanup functions, correct dependency arrays, and no suppressed lint rules?
+- **Component identity**: Are components defined at module level (not inside other components)? Is `key` used to reset state when rendering the same component type for different logical entities?
+
+Findings in this section follow the same CRITICAL/WARNING/INFO severity as other categories.
+
 ### 3. Confidence-Based Filtering
 
 Only report findings you are **highly confident** about. For each potential finding:
@@ -89,19 +102,21 @@ Append to state file:
 
 ## Pass/Fail Criteria
 
-- **Pass:** No CRITICAL findings
-- **Fail:** One or more CRITICAL findings exist
+- **Pass:** No findings at any severity (CRITICAL, WARNING, or INFO)
+- **Fail:** One or more findings exist at any severity
+
+Fix ALL findings, not just CRITICAL. Agents may misclassify severity, and fixing early is almost always cheaper than deferring. Only skip a finding if it is a genuine false positive with clear justification documented in the state file.
 
 ## On Failure
 
 When this phase fails, the orchestrator will:
-1. Extract the CRITICAL findings from the state file
+1. Extract ALL findings (CRITICAL, WARNING, and INFO) from the state file
 2. Route them to the Implementer phase for remediation
 3. The Implementer will fix the specific issues
 4. This Review phase will re-run to verify the fixes
 
 The re-run should:
 - Re-evaluate the full diff (including fixes)
-- Verify each previous CRITICAL finding is addressed
+- Verify each previous finding is addressed (or justified as false positive)
 - Check that fixes didn't introduce new issues
 - Append the re-review results to the state file (don't overwrite the original review)

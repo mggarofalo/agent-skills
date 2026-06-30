@@ -158,13 +158,15 @@ Append to state file:
 
 ## Pass/Fail Criteria
 
-- **Pass:** No CRITICAL or HIGH findings
-- **Fail:** One or more CRITICAL or HIGH findings exist
+- **Pass:** No findings at any severity (CRITICAL, HIGH, MEDIUM, or LOW)
+- **Fail:** One or more findings exist at any severity
+
+Fix ALL findings, not just CRITICAL and HIGH. Agents may misclassify severity, and fixing early is almost always cheaper than deferring. Only skip a finding if it is a genuine false positive with clear justification documented in the state file.
 
 ## On Failure
 
 When this phase fails, the orchestrator will:
-1. Extract the CRITICAL and HIGH findings with full context (threat model + code locations)
+1. Extract ALL findings (CRITICAL, HIGH, MEDIUM, and LOW) from the state file
 2. Route them to the Implementer phase for remediation
 3. The Implementer will apply security fixes
 4. This Security phase will re-run to verify the fixes

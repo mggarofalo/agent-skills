@@ -137,6 +137,7 @@ instructions: |
   | Accept        | —         | (stop, ask) | Accept   |
 
   For **Review** and **Security** failures:
+  - Fix ALL findings regardless of severity (CRITICAL, WARNING, INFO for Review; CRITICAL, HIGH, MEDIUM, LOW for Security). Agents may misclassify severity, and fixing early is almost always cheaper than deferring. Only skip a finding if it is a genuine false positive with clear justification.
   - Read the failing phase's findings from the state file
   - Re-read `phase-implement.md` and execute targeted fixes for the specific findings
   - Commit the fixes
