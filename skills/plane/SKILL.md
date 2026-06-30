@@ -1,0 +1,118 @@
+---
+name: plane
+description: >
+  Plane project management CLI and MCP server — 105 actions across 19 resource types.
+  TRIGGER when: user mentions Plane issues, work items, cycles, modules, labels, states, projects, epics,
+  initiatives, intakes, or any project-management CRUD. Also when MCP tools like issue_create, state_list,
+  cycle_update etc. are available. Provides name resolution, batch mode, ensure (idempotent upsert),
+  output extraction, and pagination.
+allowed-tools: Bash, Read
+user_invocable: false
+---
+
+# Plane CLI Reference
+
+Auto-generated on 2026-03-27. 105 actions across 19 resource types.
+
+## Quick Start
+
+First, discover your workspace slug and project identifier:
+```bash
+# List projects to find workspace slug and project identifier
+plane project list -w dev --output table
+```
+
+Then use them in all subsequent commands:
+```bash
+# Create a work item (names resolve automatically)
+plane issue create --name "Fix login bug" --state-id "In Progress" --priority urgent -w dev -p PROJ
+
+# List work items
+plane issue list -w dev -p PROJ --all
+
+# Idempotent upsert — creates if missing, updates if exists
+plane label ensure --name "backend" --color "#00FF00" -w dev -p PROJ
+
+# Extract a single field from a response
+plane issue get --work-item-id PROJ-42 --field state_detail.name -w dev -p PROJ
+```
+
+## Gotchas
+
+Read [references/gotchas.md](references/gotchas.md) before your first call. The top mistakes agents make:
+
+1. **Wrong workspace slug** — discover it with `plane project list`, don't guess from the GitHub username
+2. **MCP tool names have no `plane_` prefix** — use `issue_create`, not `plane_issue_create`
+3. **`--all` changes the response shape** — without it you get raw pagination; with it you get `{"results": [...], "total_count": N}`
+4. **`--batch` is JSONL, not a JSON array** — one JSON object per line
+5. **`--pk` is the resource UUID** — use `plane <topic> list` to discover it first
+
+## Name Resolution
+
+Flags that accept UUIDs also accept human-readable names. The CLI resolves names to UUIDs automatically.
+- `--state-id "In Progress"` resolves the state name to its UUID
+- `--label-id backend` resolves the label name to its UUID
+- `--work-item-id PROJ-42` resolves the sequence ID to a UUID
+
+Disable with `--no-resolve` to pass literal values.
+
+## Output Extraction
+- `--field <path>` — extract a single dotted-path field (e.g. `state_detail.name`)
+- `--fields <a,b,c>` — extract multiple fields as TSV
+- `--id-only` — print only the resource UUID
+
+## Ensure (Idempotent Upsert)
+
+Create-or-update a resource by name (case-sensitive match):
+```bash
+plane <topic> ensure --name "value" [--other-flags...]
+```
+
+## Pagination
+- `--all` — auto-paginate and return all results in `{"results": [...], "total_count": N}` envelope
+- `--per-page N` — items per page (max 100)
+
+## Global Flags
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--workspace` | `-w` | Workspace slug |
+| `--project` | `-p` | Project ID or identifier |
+| `--output` | `-o` | Output format: json, table |
+| `--verbose` | | Debug HTTP logging |
+| `--quiet` | `-q` | Suppress informational messages |
+| `--dry-run` | `-n` | Preview without executing |
+| `--no-resolve` | | Skip name resolution |
+| `--field` | | Extract single field (dotted path) |
+| `--fields` | | Extract multiple fields as TSV |
+| `--id-only` | | Print only resource UUID |
+| `--batch` | | JSONL batch mode (one JSON object per line) |
+| `--all` | | Auto-paginate all results |
+| `--per-page` | | Items per page |
+| `--stdin` | | Read JSON body from stdin |
+| `--retry` | | Max retries on 429 rate limit |
+
+## Resource Topics
+
+| Topic | Actions | Ensure |
+|-------|---------|--------|
+| project | 5 | yes |
+| state | 5 | yes |
+| label | 5 | yes |
+| issue | 7 | yes |
+| link | 5 | no |
+| activity | 2 | no |
+| comment | 5 | no |
+| attachment | 7 | no |
+| cycle | 12 | yes |
+| module | 11 | yes |
+| page | 4 | no |
+| intake | 5 | yes |
+| worklog | 5 | no |
+| epic | 2 | no |
+| initiative | 5 | yes |
+| customer | 8 | yes |
+| teamspace | 5 | yes |
+| sticky | 5 | yes |
+| member | 2 | no |
+
+See [references/resources.md](references/resources.md) for full per-action parameter tables.
