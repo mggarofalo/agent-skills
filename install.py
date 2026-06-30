@@ -100,10 +100,17 @@ for toml in sorted((REPO_DIR / "agents").glob("*/pyproject.toml")):
     agent_dir = toml.parent
     print(f"  [install] {agent_dir.name}")
     if shutil.which("uv"):
-        subprocess.run(["uv", "pip", "install", "--system", "-e", str(agent_dir)], check=True)
+        subprocess.run(
+            ["uv", "pip", "install", "--system", "--break-system-packages",
+             "--link-mode=copy", "-e", str(agent_dir)],
+            check=True,
+        )
     else:
-        print("    uv not found — falling back to pip")
-        subprocess.run([sys.executable, "-m", "pip", "install", "-e", str(agent_dir)], check=True)
+        subprocess.run(
+            [sys.executable, "-m", "pip", "install", "--break-system-packages",
+             "-e", str(agent_dir)],
+            check=True,
+        )
 
 print()
 print("Done.")
