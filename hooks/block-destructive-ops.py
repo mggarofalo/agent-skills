@@ -16,6 +16,10 @@ Network operations blocked (Bash):
   - curl/wget piped to shell (arbitrary code execution)
   - curl -d @file / curl --data @file (data exfiltration)
 
+Shell wrapper handling (Bash):
+  - bash -c / sh -c wrappers: inner command is extracted and scanned
+    so that quoting cannot bypass pattern checks
+
 Sensitive file protection (Read, Write, Edit):
   - ~/.ssh/**, ~/.aws/**, ~/.gnupg/**, ~/.config/gh/** (auth dirs)
   - ~/.netrc
@@ -207,6 +211,26 @@ DISCARD_ALL = re.compile(r"git\s+(?:checkout\s+--\s+\.|restore\s+\.)")
 PIPE_TO_SHELL = re.compile(r"(?:curl|wget)\s+.*\|\s*(?:ba)?sh\b")
 CURL_EXFIL = re.compile(r"curl\s+.*(?:-d\s*@|--data(?:-\w+)?\s+@)")
 
+# bash -c / sh -c wrapper — extract inner command for scanning
+SHELL_DASH_C = re.compile(
+    r"""(?:bash|sh)\s+(?:-\S+\s+)*-c\s+(?:'([^']*)'|"((?:[^"\\]|\\.)*)")"""
+)
+
+
+def extract_inner_commands(command: str) -> list:
+    """Extract command strings from bash -c / sh -c wrappers.
+
+    Returns the inner command text from each bash -c / sh -c invocation
+    found in the command, so they can be scanned independently.
+    """
+    result = []
+    for m in SHELL_DASH_C.finditer(command):
+        # Group 1 = single-quoted content, group 2 = double-quoted content
+        cmd = m.group(1) if m.group(1) is not None else m.group(2)
+        if cmd and cmd.strip():
+            result.append(cmd)
+    return result
+
 
 def is_force_push_to_main(command: str) -> bool:
     """Check if command is a force push to main/master."""
@@ -247,56 +271,11 @@ def is_dangerous_rm(command: str) -> bool:
     return False
 
 
-# --- Dispatch ---
+def check_bash_patterns(stripped: str) -> None:
+    """Run all destructive-operation checks against a (quote-stripped) command.
 
-
-def main() -> None:
-    payload = json.loads(sys.stdin.read())
-    tool_name = payload.get("tool_name", "")
-    tool_input = payload.get("tool_input") or {}
-
-    # --- File tool checks: Read, Write, Edit ---
-
-    if tool_name in ("Read", "Write", "Edit"):
-        file_path = tool_input.get("file_path", "")
-        if not file_path:
-            sys.exit(0)
-
-        resolved = resolve_path(file_path)
-
-        # Sensitive file check (all three tools)
-        if is_sensitive_path(resolved, tool_name):
-            deny(
-                f"BLOCKED: `{tool_name}` on `{os.path.basename(file_path)}` "
-                "— this is a credential or secret file. Access sensitive "
-                "files manually outside Claude Code to avoid accidental "
-                "exposure."
-            )
-
-        # Self-modification check (Write and Edit only)
-        if tool_name in ("Write", "Edit") and is_self_modification(resolved):
-            deny(
-                f"BLOCKED: `{tool_name}` on `{file_path}` — this is a "
-                "Claude Code configuration or hook file. Self-modification "
-                "of guardrails is blocked to prevent prompt injection from "
-                "disabling safety checks. Edit this file manually if "
-                "changes are needed."
-            )
-
-        sys.exit(0)
-
-    # --- Bash tool checks ---
-
-    if tool_name != "Bash":
-        sys.exit(0)
-
-    command = tool_input.get("command", "")
-    if not command.strip():
-        sys.exit(0)
-
-    # Strip quoted content so patterns inside strings/heredocs don't trigger
-    stripped = strip_quoted_content(command)
-
+    Calls deny() and exits if a dangerous pattern is found.
+    """
     # Git checks
     if RESET_HARD.search(stripped):
         deny(
@@ -346,6 +325,64 @@ def main() -> None:
             "sensitive files to a remote server. Download the file "
             "explicitly first and review what you're sending."
         )
+
+
+# --- Dispatch ---
+
+
+def main() -> None:
+    payload = json.loads(sys.stdin.read())
+    tool_name = payload.get("tool_name", "")
+    tool_input = payload.get("tool_input") or {}
+
+    # --- File tool checks: Read, Write, Edit ---
+
+    if tool_name in ("Read", "Write", "Edit"):
+        file_path = tool_input.get("file_path", "")
+        if not file_path:
+            sys.exit(0)
+
+        resolved = resolve_path(file_path)
+
+        # Sensitive file check (all three tools)
+        if is_sensitive_path(resolved, tool_name):
+            deny(
+                f"BLOCKED: `{tool_name}` on `{os.path.basename(file_path)}` "
+                "— this is a credential or secret file. Access sensitive "
+                "files manually outside Claude Code to avoid accidental "
+                "exposure."
+            )
+
+        # Self-modification check (Write and Edit only)
+        if tool_name in ("Write", "Edit") and is_self_modification(resolved):
+            deny(
+                f"BLOCKED: `{tool_name}` on `{file_path}` — this is a "
+                "Claude Code configuration or hook file. Self-modification "
+                "of guardrails is blocked to prevent prompt injection from "
+                "disabling safety checks. Edit this file manually if "
+                "changes are needed."
+            )
+
+        sys.exit(0)
+
+    # --- Bash tool checks ---
+
+    if tool_name != "Bash":
+        sys.exit(0)
+
+    command = tool_input.get("command", "")
+    if not command.strip():
+        sys.exit(0)
+
+    # Check the raw command (after stripping quotes to avoid false positives
+    # from heredocs / commit messages).
+    check_bash_patterns(strip_quoted_content(command))
+
+    # Also extract and check inner commands from bash -c / sh -c wrappers.
+    # Without this, `bash -c 'git reset --hard'` would evade detection
+    # because strip_quoted_content removes the single-quoted payload.
+    for inner in extract_inner_commands(command):
+        check_bash_patterns(strip_quoted_content(inner))
 
     # Allowed
     sys.exit(0)
