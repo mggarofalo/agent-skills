@@ -1,6 +1,6 @@
 ---
 name: init-repo
-description: Initialize a new GitHub repository with CI, guidance files, and config tailored to the project's language/framework. Creates the repo under mggarofalo, sets up GitHub Actions, AGENTS.md, docs/plane.md, CLAUDE.md, .gitignore, .gitattributes, .editorconfig, and pre-commit hooks.
+description: Initialize a new GitHub repository with CI, guidance files, and config tailored to the project's language/framework. Creates the repo under mggarofalo, sets up GitHub Actions, branch protection rulesets, AGENTS.md, docs/plane.md, CLAUDE.md, .gitignore, .gitattributes, .editorconfig, and pre-commit hooks.
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep, AskUserQuestion, WebSearch
 ---
 
@@ -24,6 +24,7 @@ These conventions apply to ALL repos regardless of language:
 
 - **GitHub account:** `mggarofalo`
 - **Default branch:** `main`
+- **Branch protection:** a ruleset named `main protection` targeting `~DEFAULT_BRANCH` (see Step 9)
 - **Commit style:** [Conventional Commits](https://www.conventionalcommits.org/)
 - **Branch strategy:** Two-tier (milestone branches → issue branches, squash-merge, worktrees)
 - **Plane workspace:** mggarofalo
@@ -388,12 +389,112 @@ git commit -m "chore: initial repo setup with CI, guidance, and config"
 git push -u origin main
 ```
 
-### Step 9: Summary
+### Step 9: Branch protection ruleset
+
+Do this AFTER the initial push, so `main` exists and the CI job names are known.
+
+Use a **ruleset**, not legacy branch protection. Rulesets target `~DEFAULT_BRANCH` (so they survive a rename), stack cleanly, and are what every existing mggarofalo repo uses.
+
+#### The standard ruleset
+
+Four rule blocks. This is the `main protection` ruleset from Receipts, which is the reference implementation:
+
+| Rule | Why |
+|---|---|
+| `deletion` | Can't delete the default branch |
+| `non_fast_forward` | Can't force-push / rewrite history |
+| `pull_request` | No direct commits to `main`; dismiss stale reviews on push |
+| `required_status_checks` | Every CI job must pass before merge |
+
+`required_approving_review_count` is **0**. These are solo repos — requiring an approval you'd give yourself is theater, and it blocks agent-driven merges. The PR requirement alone is what gates direct pushes.
+
+Create it with:
+
+```bash
+gh api repos/mggarofalo/<repo-name>/rulesets --method POST --input - <<'JSON'
+{
+  "name": "main protection",
+  "target": "branch",
+  "enforcement": "active",
+  "conditions": {
+    "ref_name": { "include": ["~DEFAULT_BRANCH"], "exclude": [] }
+  },
+  "rules": [
+    { "type": "deletion" },
+    { "type": "non_fast_forward" },
+    {
+      "type": "pull_request",
+      "parameters": {
+        "allowed_merge_methods": ["merge", "squash", "rebase"],
+        "dismiss_stale_reviews_on_push": true,
+        "require_code_owner_review": false,
+        "require_last_push_approval": false,
+        "required_approving_review_count": 0,
+        "required_review_thread_resolution": false
+      }
+    },
+    {
+      "type": "required_status_checks",
+      "parameters": {
+        "do_not_enforce_on_create": false,
+        "strict_required_status_checks_policy": false,
+        "required_status_checks": [
+          { "context": "Build & Test" }
+        ]
+      }
+    }
+  ]
+}
+JSON
+```
+
+#### Status check contexts
+
+The `context` string must match the job's `name:` field in the workflow **exactly** — not the job key. From the Step 4 CI templates:
+
+| Language | Contexts |
+|---|---|
+| Swift/iOS | `Build & Test` |
+| .NET/C# | `Build & Test`, `Code Formatting` |
+| React/TypeScript | `Build & Test` |
+| Python | `Build & Test` |
+
+If you add jobs later (vulnerability scan, conventional-commit lint, API breaking-change check, test shards), add matching contexts to the ruleset in the same change. A required check that never reports blocks merges forever; a CI job that isn't required silently stops gating.
+
+Keep `strict_required_status_checks_policy: false` — `true` forces every PR to be rebased onto the tip of `main` before merge, which thrashes on solo repos.
+
+#### If status checks are rejected
+
+Status-check rules inside rulesets may require a paid plan on personal repos. If the API rejects that block, fall back to the **hybrid** setup: create the ruleset with the first three rules only, then set required checks through the legacy branch protection API.
+
+```bash
+gh api repos/mggarofalo/<repo-name>/branches/main/protection --method PUT --input - <<'JSON'
+{
+  "required_status_checks": { "strict": false, "contexts": ["Build & Test"] },
+  "enforce_admins": true,
+  "required_pull_request_reviews": null,
+  "restrictions": null
+}
+JSON
+```
+
+This is what gh-plane-sync runs. Note it in the Step 10 summary so the split configuration isn't a surprise later.
+
+#### Verify
+
+```bash
+gh api repos/mggarofalo/<repo-name>/rulesets/<id> --jq '{name, conditions, rules}'
+```
+
+Confirm the rule types and every status-check context are present.
+
+### Step 10: Summary
 
 Report what was created:
 - GitHub repo URL
 - Files created (list)
 - CI pipeline (what it does)
+- Branch protection (ruleset name + ID, which rules, which required checks, and whether checks came via ruleset or the legacy fallback)
 - Next steps (what the user should do next)
 
 ## Important Notes
@@ -403,3 +504,5 @@ Report what was created:
 - If the repo already has commits, work incrementally (don't `git init` over existing history)
 - Always verify `gh auth status` before creating repos
 - The branch strategy section in AGENTS.md is project-agnostic — copy it from Receipts and only change project-specific references (solution name, project paths)
+- **`non_fast_forward` has no API bypass.** Once the ruleset is active, a force-push to `main` — including resetting after a bad merge — requires manually unchecking "Block force pushes" in **Settings → Rules → Rulesets**, then re-enabling it. Tell the user this rather than trying to work around it, and remind them to turn it back on.
+- **Merge method matters for release-please.** Squash-merging a `develop`-style integration PR collapses its `feat`/`fix` commits into one `chore:` commit, and release-please then skips the release entirely. For integration PRs, use a merge commit; squash is fine for ordinary feature PRs.
