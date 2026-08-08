@@ -69,16 +69,15 @@ Since `~/.claude/skills`, `commands`, and `agents` are symlinks into this repo, 
 
 | Skill | Description |
 |-------|-------------|
-| **accessibility-audit** | WCAG 2.1 AA compliance audit using agent-browser and static analysis |
 | **agent-skills** | Scaffold, remove, or list skills, hooks, commands, agents, and config |
 | **clear-writing** | Plain-English writing style for reports, summaries, and guidance |
-| **fix-develop** | Never-fix-incidental-breakage workflow: stash, branch, fix, PR, rebase, resume |
-| **init-repo** | GitHub repo scaffolding with CI, guidance files, and config per language |
-| **owasp-top-10** | OWASP Top 10 security audit (static, dependency, and runtime) |
-| **powershell-expert** | PowerShell scripting, modules, and GUI development reference |
+| **fix-develop** | Land a fix on the base branch as its own PR, then rebase and resume |
+| **init-repo** | GitHub repo scaffolding with CI, guidance files, branch-protection rulesets, and config per language |
+| **owasp-top-10** | OWASP Top 10 security audit (static code and dependency scanning) |
+| **plane** | Plane CLI reference — auto-generated, regenerate after every CLI upgrade |
+| **recall** | Search past Claude Code session history (temporal, topic, graph) |
 | **reflect** | Session retrospective — extract learnings, update memory and guidance files |
 | **resolve-conflicts** | Resolve merge conflicts on a PR by rebasing, resolving per-category, and force-pushing |
-| **sdlc** | Structured SDLC pipeline: Plan, Implement, Review, Security, QA, Accept |
 | **system-audit** | Audit Claude Code system for staleness, redundancy, gaps, and token waste |
 | **work-issue** | End-to-end Plane issue implementation workflow |
 
@@ -92,7 +91,6 @@ Since `~/.claude/skills`, `commands`, and `agents` are symlinks into this repo, 
 
 | Agent | Type | Description |
 |-------|------|-------------|
-| **accessibility-audit** | Native | Pre-commit accessibility audit gate |
 | **pr-bug-finder** | SDK (Python) | Hunter/challenger/synthesizer adversarial bug analysis |
 
 ### Hooks
