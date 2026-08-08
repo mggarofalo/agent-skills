@@ -18,11 +18,29 @@ Invoked via the `/find-bugs` command in Claude Code, which calls `main.py` direc
 /find-bugs [pr-url-or-diff-path]
 ```
 
-Or run standalone:
+Or run standalone. Exactly one input source is required:
 
 ```bash
-python main.py --pr-url <url> --output-dir <path> [--budget 2.00]
+python main.py <pr-url-or-number> --cwd <repo> --output-dir <path>
+python main.py --local          --cwd <repo> --output-dir <path>   # uncommitted changes vs HEAD
+python main.py --diff <file|->  --cwd <repo> --output-dir <path>   # a diff file, or - for stdin
 ```
+
+The final report path is the only thing written to stdout; all progress goes to stderr.
+
+### Resuming a failed run
+
+Each stage's output is written to `--output-dir` the moment it completes (`hunter.md`, `challenger.md`, `report.md`), and streamed to disk incrementally while it runs. Since a stage costs 5-15 minutes, re-run with the same output directory rather than starting over:
+
+```bash
+python main.py <same args> --output-dir <same path> --resume
+```
+
+`--resume` skips any stage whose output file already exists and is non-empty, and requires `--output-dir`. A stage that errored deletes its own partial output, so a truncated analysis is never resumed as though it were complete.
+
+### Encoding
+
+All file I/O is explicitly UTF-8. Agent output regularly contains characters outside Latin-1 (arrows, em dashes, box drawing, emoji), which the Windows default locale encoding (cp1252) cannot represent. Do not remove the explicit `encoding=` arguments, and do not rely on `PYTHONUTF8=1` being set in the environment — the script must work when invoked plainly.
 
 ## Setup
 

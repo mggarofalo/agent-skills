@@ -41,6 +41,18 @@ PR_URL=$(gh pr view --json url -q .url 2>/dev/null)
 ```
 If that succeeds, use that URL. If it fails, tell the user they can provide a PR URL, diff path, or use `local` to analyze uncommitted changes.
 
+## If the run fails partway
+
+Each of the three stages costs 5-15 minutes, and every completed stage is written to `$OUTPUT_DIR` the moment it finishes. **Do not start over** — re-run the exact same command with `--resume` appended and the *same* `$OUTPUT_DIR`:
+
+```
+env -u CLAUDECODE python ~/.claude/agents/pr-bug-finder/main.py <same args> --cwd $(pwd) --output-dir "$OUTPUT_DIR" --resume
+```
+
+Completed stages are reused instantly; only the stage that failed and those after it re-run. A stage that errored leaves nothing behind, so `--resume` never replays a truncated analysis as if it were complete.
+
+Report the failure to the user before resuming if the cause looks like something they need to act on — a spend limit, an expired token, a missing `gh` login.
+
 ## Reading the results
 
 The command prints the report file path to stdout (e.g. `/tmp/pr-bug-finder-1234567890/report.md`). Use the `Read` tool to read that file and present the markdown report to the user.
