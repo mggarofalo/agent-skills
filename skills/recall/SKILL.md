@@ -56,11 +56,33 @@ Semantic search across session content. Requires QMD MCP server.
 
 ### Steps
 
-1. **Check if QMD tools are available** (look for `qmd_search`, `qmd_deep_search`, or `qmd_vector_search` in available tools).
+1. **Check if QMD tools are available** — look for `mcp__qmd__query`, `mcp__qmd__get`, `mcp__qmd__multi_get`, and `mcp__qmd__status`. These are MCP tools and may be **deferred**: if you see the names listed but cannot call them, load their schemas first with a single `ToolSearch` call:
+   ```
+   ToolSearch query: "select:mcp__qmd__query,mcp__qmd__get,mcp__qmd__multi_get,mcp__qmd__status"
+   ```
+   Deferred-but-loadable counts as available. Do not fall back to Grep just because the schemas were not loaded yet.
 
-2. **If QMD is available**: Use `qmd_deep_search` with:
-   - `query`: the user's search terms
-   - `collection`: `claude-sessions` (if the tool supports collection filtering)
+2. **If QMD is available**: call `mcp__qmd__query`. It takes typed sub-queries, not a plain query string:
+   - `searches`: an array of `{type, query}` objects. `lex` is BM25 keyword matching (supports `"quoted phrases"` and `-negation`), `vec` is semantic, `hyde` is a hypothetical answer passage. The **first sub-query carries 2× weight**, so lead with your strongest signal.
+   - `collections`: `["claude-sessions"]` — note the plural; it is an array.
+   - `intent`: one line of context disambiguating the search. Always pass this.
+   - `limit` / `minScore`: optional. `minScore: 0.5` filters weak hits.
+
+   For best recall, combine a `lex` and a `vec` sub-query:
+   ```json
+   {
+     "searches": [
+       {"type": "lex", "query": "\"connection pool\" timeout -redis"},
+       {"type": "vec", "query": "why do database connections time out under load"}
+     ],
+     "collections": ["claude-sessions"],
+     "intent": "debugging DB connection exhaustion in the Receipts API"
+   }
+   ```
+
+   Each result carries a `line` field pointing at the best match. To read context around a hit, call `mcp__qmd__get` with `fromLine` set to roughly 20 lines before it.
+
+   **Caveat on transcript search:** sessions embed the full text of any skill they invoked, so a query naming a skill will rank that skill's own boilerplate above real usage. When searching for how something *behaved*, search for the symptom (an error string, a workaround, a decision) rather than the tool's name.
 
    Present results with:
    - Session date and project
