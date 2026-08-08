@@ -1,6 +1,6 @@
 # Plane CLI Resource Reference
 
-Auto-generated on 2026-03-27.
+Auto-generated on 2026-08-08.
 
 ## Project
 
@@ -8,7 +8,7 @@ Auto-generated on 2026-03-27.
 
 MCP tool: `project_create`
 
-**POST** `/api/v1/workspaces/{slug}/projects/`
+**POST** `/api/v1/workspaces/{workspace_slug}/projects/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
@@ -38,7 +38,7 @@ MCP tool: `project_create`
 
 MCP tool: `project_list`
 
-**GET** `/api/v1/workspaces/{slug}/projects/`
+**GET** `/api/v1/workspaces/{workspace_slug}/projects/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
@@ -52,21 +52,21 @@ MCP tool: `project_list`
 
 MCP tool: `project_get`
 
-**GET** `/api/v1/workspaces/{slug}/projects/{pk}/`
+**GET** `/api/v1/workspaces/{workspace_slug}/projects/{resource_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--pk` | string | yes | resource UUID — use `list` to discover |
+| `--resource-id` | string | yes | |
 
 ### `plane project update`
 
 MCP tool: `project_update`
 
-**PATCH** `/api/v1/workspaces/{slug}/projects/{pk}/`
+**PATCH** `/api/v1/workspaces/{workspace_slug}/projects/{resource_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--pk` | string | yes | resource UUID — use `list` to discover |
+| `--resource-id` | string | yes | |
 | `--archive-in` | number | no | |
 | `--close-in` | number | no | |
 | `--cover-image` | string | no | |
@@ -95,11 +95,11 @@ MCP tool: `project_update`
 
 MCP tool: `project_delete`
 
-**DELETE** `/api/v1/workspaces/{slug}/projects/{pk}/`
+**DELETE** `/api/v1/workspaces/{workspace_slug}/projects/{resource_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--pk` | string | yes | resource UUID — use `list` to discover |
+| `--resource-id` | string | yes | |
 
 
 ### `plane project ensure`
@@ -112,7 +112,7 @@ Idempotent create-or-update by name. Accepts the same flags as create/update.
 
 MCP tool: `state_create`
 
-**POST** `/api/v1/workspaces/{slug}/projects/{project_id}/states/`
+**POST** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/states/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
@@ -130,7 +130,7 @@ MCP tool: `state_create`
 
 MCP tool: `state_list`
 
-**GET** `/api/v1/workspaces/{slug}/projects/{project_id}/states/`
+**GET** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/states/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
@@ -143,7 +143,7 @@ MCP tool: `state_list`
 
 MCP tool: `state_get`
 
-**GET** `/api/v1/workspaces/{slug}/projects/{project_id}/states/{state_id}/`
+**GET** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/states/{state_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
@@ -153,7 +153,7 @@ MCP tool: `state_get`
 
 MCP tool: `state_update`
 
-**PATCH** `/api/v1/workspaces/{slug}/projects/{project_id}/states/{state_id}/`
+**PATCH** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/states/{state_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
@@ -172,7 +172,7 @@ MCP tool: `state_update`
 
 MCP tool: `state_delete`
 
-**DELETE** `/api/v1/workspaces/{slug}/projects/{project_id}/states/{state_id}/`
+**DELETE** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/states/{state_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
@@ -189,7 +189,7 @@ Idempotent create-or-update by name. Accepts the same flags as create/update.
 
 MCP tool: `label_create`
 
-**POST** `/api/v1/workspaces/{slug}/projects/{project_id}/labels/`
+**POST** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/labels/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
@@ -205,7 +205,7 @@ MCP tool: `label_create`
 
 MCP tool: `label_list`
 
-**GET** `/api/v1/workspaces/{slug}/projects/{project_id}/labels/`
+**GET** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/labels/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
@@ -219,21 +219,21 @@ MCP tool: `label_list`
 
 MCP tool: `label_get`
 
-**GET** `/api/v1/workspaces/{slug}/projects/{project_id}/labels/{pk}/`
+**GET** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/labels/{label_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--pk` | string | yes | resource UUID — use `list` to discover |
+| `--label-id` | string | yes | accepts name or UUID |
 
 ### `plane label update`
 
 MCP tool: `label_update`
 
-**PATCH** `/api/v1/workspaces/{slug}/projects/{project_id}/labels/{pk}/`
+**PATCH** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/labels/{label_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--pk` | string | yes | resource UUID — use `list` to discover |
+| `--label-id` | string | yes | accepts name or UUID |
 | `--color` | string | no | |
 | `--description` | string | no | |
 | `--external-id` | string | no | |
@@ -246,11 +246,11 @@ MCP tool: `label_update`
 
 MCP tool: `label_delete`
 
-**DELETE** `/api/v1/workspaces/{slug}/projects/{project_id}/labels/{pk}/`
+**DELETE** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/labels/{label_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--pk` | string | yes | resource UUID — use `list` to discover |
+| `--label-id` | string | yes | accepts name or UUID |
 
 
 ### `plane label ensure`
@@ -263,7 +263,7 @@ Idempotent create-or-update by name. Accepts the same flags as create/update.
 
 MCP tool: `issue_create`
 
-**POST** `/api/v1/workspaces/{slug}/projects/{project_id}/work-items/`
+**POST** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/work-items/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
@@ -296,7 +296,7 @@ MCP tool: `issue_create`
 
 MCP tool: `issue_list`
 
-**GET** `/api/v1/workspaces/{slug}/projects/{project_id}/work-items/`
+**GET** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/work-items/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
@@ -312,11 +312,11 @@ MCP tool: `issue_list`
 
 MCP tool: `issue_get`
 
-**GET** `/api/v1/workspaces/{slug}/projects/{project_id}/work-items/{pk}/`
+**GET** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/work-items/{resource_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--pk` | string | yes | resource UUID — use `list` to discover |
+| `--resource-id` | string | yes | |
 | `--expand` | string | no | |
 | `--external-id` | string | no | |
 | `--external-source` | string | no | |
@@ -327,7 +327,7 @@ MCP tool: `issue_get`
 
 MCP tool: `issue_get_by_sequence_id`
 
-**GET** `/api/v1/workspaces/{slug}/work-items/{project_identifier}-{issue_identifier}/`
+**GET** `/api/v1/workspaces/{workspace_slug}/work-items/{project_identifier}-{issue_identifier}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
@@ -338,7 +338,7 @@ MCP tool: `issue_get_by_sequence_id`
 
 MCP tool: `issue_search`
 
-**GET** `/api/v1/workspaces/{slug}/work-items/search/`
+**GET** `/api/v1/workspaces/{workspace_slug}/work-items/search/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
@@ -350,11 +350,11 @@ MCP tool: `issue_search`
 
 MCP tool: `issue_update`
 
-**PATCH** `/api/v1/workspaces/{slug}/projects/{project_id}/work-items/{pk}/`
+**PATCH** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/work-items/{resource_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--pk` | string | yes | resource UUID — use `list` to discover |
+| `--resource-id` | string | yes | |
 | `--archived-at` | string | no | |
 | `--assignees` | string[] | no | |
 | `--completed-at` | string | no | |
@@ -384,11 +384,11 @@ MCP tool: `issue_update`
 
 MCP tool: `issue_delete`
 
-**DELETE** `/api/v1/workspaces/{slug}/projects/{project_id}/work-items/{pk}/`
+**DELETE** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/work-items/{resource_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--pk` | string | yes | resource UUID — use `list` to discover |
+| `--resource-id` | string | yes | |
 
 
 ### `plane issue ensure`
@@ -401,23 +401,23 @@ Idempotent create-or-update by name. Accepts the same flags as create/update.
 
 MCP tool: `link_add`
 
-**POST** `/api/v1/workspaces/{slug}/projects/{project_id}/work-items/{issue_id}/links/`
+**POST** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/work-items/{work_item_id}/links/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--issue-id` | string | yes | |
 | `--url` | string | yes | |
+| `--work-item-id` | string | yes | accepts UUID or sequence ID (e.g. PROJ-42) |
 | `--title` | string | no | |
 
 ### `plane link list`
 
 MCP tool: `link_list`
 
-**GET** `/api/v1/workspaces/{slug}/projects/{project_id}/work-items/{issue_id}/links/`
+**GET** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/work-items/{work_item_id}/links/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--issue-id` | string | yes | |
+| `--work-item-id` | string | yes | accepts UUID or sequence ID (e.g. PROJ-42) |
 | `--cursor` | string | no | |
 | `--expand` | string | no | |
 | `--fields` | string | no | |
@@ -428,12 +428,12 @@ MCP tool: `link_list`
 
 MCP tool: `link_get`
 
-**GET** `/api/v1/workspaces/{slug}/projects/{project_id}/work-items/{issue_id}/links/{pk}/`
+**GET** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/work-items/{work_item_id}/links/{resource_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--issue-id` | string | yes | |
-| `--pk` | string | yes | resource UUID — use `list` to discover |
+| `--resource-id` | string | yes | |
+| `--work-item-id` | string | yes | accepts UUID or sequence ID (e.g. PROJ-42) |
 | `--cursor` | string | no | |
 | `--expand` | string | no | |
 | `--fields` | string | no | |
@@ -443,12 +443,12 @@ MCP tool: `link_get`
 
 MCP tool: `link_update`
 
-**PATCH** `/api/v1/workspaces/{slug}/projects/{project_id}/work-items/{issue_id}/links/{pk}/`
+**PATCH** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/work-items/{work_item_id}/links/{resource_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--issue-id` | string | yes | |
-| `--pk` | string | yes | resource UUID — use `list` to discover |
+| `--resource-id` | string | yes | |
+| `--work-item-id` | string | yes | accepts UUID or sequence ID (e.g. PROJ-42) |
 | `--title` | string | no | |
 | `--url` | string | no | |
 
@@ -456,12 +456,12 @@ MCP tool: `link_update`
 
 MCP tool: `link_delete`
 
-**DELETE** `/api/v1/workspaces/{slug}/projects/{project_id}/work-items/{issue_id}/links/{pk}/`
+**DELETE** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/work-items/{work_item_id}/links/{resource_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--issue-id` | string | yes | |
-| `--pk` | string | yes | resource UUID — use `list` to discover |
+| `--resource-id` | string | yes | |
+| `--work-item-id` | string | yes | accepts UUID or sequence ID (e.g. PROJ-42) |
 
 
 ## Activity
@@ -470,11 +470,11 @@ MCP tool: `link_delete`
 
 MCP tool: `activity_list`
 
-**GET** `/api/v1/workspaces/{slug}/projects/{project_id}/work-items/{issue_id}/activities/`
+**GET** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/work-items/{work_item_id}/activities/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--issue-id` | string | yes | |
+| `--work-item-id` | string | yes | accepts UUID or sequence ID (e.g. PROJ-42) |
 | `--cursor` | string | no | |
 | `--expand` | string | no | |
 | `--fields` | string | no | |
@@ -485,12 +485,12 @@ MCP tool: `activity_list`
 
 MCP tool: `activity_get`
 
-**GET** `/api/v1/workspaces/{slug}/projects/{project_id}/work-items/{issue_id}/activities/{pk}/`
+**GET** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/work-items/{work_item_id}/activities/{resource_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--issue-id` | string | yes | |
-| `--pk` | string | yes | resource UUID — use `list` to discover |
+| `--resource-id` | string | yes | |
+| `--work-item-id` | string | yes | accepts UUID or sequence ID (e.g. PROJ-42) |
 | `--cursor` | string | no | |
 | `--expand` | string | no | |
 | `--fields` | string | no | |
@@ -504,11 +504,11 @@ MCP tool: `activity_get`
 
 MCP tool: `comment_add`
 
-**POST** `/api/v1/workspaces/{slug}/projects/{project_id}/work-items/{issue_id}/comments/`
+**POST** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/work-items/{work_item_id}/comments/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--issue-id` | string | yes | |
+| `--work-item-id` | string | yes | accepts UUID or sequence ID (e.g. PROJ-42) |
 | `--access` | string | no | |
 | `--comment` | string | no | |
 | `--comment-json` | string | no | |
@@ -520,11 +520,11 @@ MCP tool: `comment_add`
 
 MCP tool: `comment_list`
 
-**GET** `/api/v1/workspaces/{slug}/projects/{project_id}/work-items/{issue_id}/comments/`
+**GET** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/work-items/{work_item_id}/comments/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--issue-id` | string | yes | |
+| `--work-item-id` | string | yes | accepts UUID or sequence ID (e.g. PROJ-42) |
 | `--cursor` | string | no | |
 | `--expand` | string | no | |
 | `--fields` | string | no | |
@@ -535,23 +535,23 @@ MCP tool: `comment_list`
 
 MCP tool: `comment_get`
 
-**GET** `/api/v1/workspaces/{slug}/projects/{project_id}/work-items/{issue_id}/comments/{pk}/`
+**GET** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/work-items/{work_item_id}/comments/{resource_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--issue-id` | string | yes | |
-| `--pk` | string | yes | resource UUID — use `list` to discover |
+| `--resource-id` | string | yes | |
+| `--work-item-id` | string | yes | accepts UUID or sequence ID (e.g. PROJ-42) |
 
 ### `plane comment update`
 
 MCP tool: `comment_update`
 
-**PATCH** `/api/v1/workspaces/{slug}/projects/{project_id}/work-items/{issue_id}/comments/{pk}/`
+**PATCH** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/work-items/{work_item_id}/comments/{resource_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--issue-id` | string | yes | |
-| `--pk` | string | yes | resource UUID — use `list` to discover |
+| `--resource-id` | string | yes | |
+| `--work-item-id` | string | yes | accepts UUID or sequence ID (e.g. PROJ-42) |
 | `--access` | string | no | |
 | `--comment` | string | no | |
 | `--comment-json` | string | no | |
@@ -563,12 +563,12 @@ MCP tool: `comment_update`
 
 MCP tool: `comment_delete`
 
-**DELETE** `/api/v1/workspaces/{slug}/projects/{project_id}/work-items/{issue_id}/comments/{pk}/`
+**DELETE** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/work-items/{work_item_id}/comments/{resource_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--issue-id` | string | yes | |
-| `--pk` | string | yes | resource UUID — use `list` to discover |
+| `--resource-id` | string | yes | |
+| `--work-item-id` | string | yes | accepts UUID or sequence ID (e.g. PROJ-42) |
 
 
 ## Attachment
@@ -577,34 +577,34 @@ MCP tool: `comment_delete`
 
 MCP tool: `attachment_list`
 
-**GET** `/api/v1/workspaces/{slug}/projects/{project_id}/work-items/{issue_id}/attachments/`
+**GET** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/work-items/{work_item_id}/attachments/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--issue-id` | string | yes | |
+| `--work-item-id` | string | yes | accepts UUID or sequence ID (e.g. PROJ-42) |
 
 ### `plane attachment get`
 
 MCP tool: `attachment_get`
 
-**GET** `/api/v1/workspaces/{slug}/projects/{project_id}/work-items/{issue_id}/attachments/{pk}/`
+**GET** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/work-items/{work_item_id}/attachments/{resource_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--issue-id` | string | yes | |
-| `--pk` | string | yes | resource UUID — use `list` to discover |
+| `--resource-id` | string | yes | |
+| `--work-item-id` | string | yes | accepts UUID or sequence ID (e.g. PROJ-42) |
 
 ### `plane attachment get-upload-credentials`
 
 MCP tool: `attachment_get_upload_credentials`
 
-**POST** `/api/v1/workspaces/{slug}/projects/{project_id}/work-items/{issue_id}/attachments/`
+**POST** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/work-items/{work_item_id}/attachments/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--issue-id` | string | yes | |
 | `--name` | string | yes | |
 | `--size` | number | yes | |
+| `--work-item-id` | string | yes | accepts UUID or sequence ID (e.g. PROJ-42) |
 | `--external-id` | string | no | |
 | `--external-source` | string | no | |
 | `--type` | string | no | |
@@ -625,36 +625,36 @@ MCP tool: `attachment_upload_file`
 
 MCP tool: `attachment_complete_upload`
 
-**PATCH** `/api/v1/workspaces/{slug}/projects/{project_id}/work-items/{issue_id}/attachments/{pk}/`
+**PATCH** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/work-items/{work_item_id}/attachments/{resource_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--issue-id` | string | yes | |
-| `--pk` | string | yes | resource UUID — use `list` to discover |
+| `--resource-id` | string | yes | |
+| `--work-item-id` | string | yes | accepts UUID or sequence ID (e.g. PROJ-42) |
 | `--is-uploaded` | boolean | no | |
 
 ### `plane attachment update`
 
 MCP tool: `attachment_update`
 
-**PATCH** `/api/v1/workspaces/{slug}/projects/{project_id}/work-items/{issue_id}/attachments/{pk}/`
+**PATCH** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/work-items/{work_item_id}/attachments/{resource_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--issue-id` | string | yes | |
-| `--pk` | string | yes | resource UUID — use `list` to discover |
+| `--resource-id` | string | yes | |
+| `--work-item-id` | string | yes | accepts UUID or sequence ID (e.g. PROJ-42) |
 | `--is-uploaded` | boolean | no | |
 
 ### `plane attachment delete`
 
 MCP tool: `attachment_delete`
 
-**DELETE** `/api/v1/workspaces/{slug}/projects/{project_id}/work-items/{issue_id}/attachments/{pk}/`
+**DELETE** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/work-items/{work_item_id}/attachments/{resource_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--issue-id` | string | yes | |
-| `--pk` | string | yes | resource UUID — use `list` to discover |
+| `--resource-id` | string | yes | |
+| `--work-item-id` | string | yes | accepts UUID or sequence ID (e.g. PROJ-42) |
 
 
 ## Cycle
@@ -663,7 +663,7 @@ MCP tool: `attachment_delete`
 
 MCP tool: `cycle_create`
 
-**POST** `/api/v1/workspaces/{slug}/projects/{project_id}/cycles/`
+**POST** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/cycles/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
@@ -680,7 +680,7 @@ MCP tool: `cycle_create`
 
 MCP tool: `cycle_add_work_items`
 
-**POST** `/api/v1/workspaces/{slug}/projects/{project_id}/cycles/{cycle_id}/cycle-issues/`
+**POST** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/cycles/{cycle_id}/cycle-issues/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
@@ -691,7 +691,7 @@ MCP tool: `cycle_add_work_items`
 
 MCP tool: `cycle_transfer_work_items`
 
-**POST** `/api/v1/workspaces/{slug}/projects/{project_id}/cycles/{cycle_id}/transfer-issues/`
+**POST** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/cycles/{cycle_id}/transfer-issues/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
@@ -702,7 +702,7 @@ MCP tool: `cycle_transfer_work_items`
 
 MCP tool: `cycle_archive`
 
-**POST** `/api/v1/workspaces/{slug}/projects/{project_id}/cycles/{cycle_id}/archive/`
+**POST** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/cycles/{cycle_id}/archive/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
@@ -712,7 +712,7 @@ MCP tool: `cycle_archive`
 
 MCP tool: `cycle_list`
 
-**GET** `/api/v1/workspaces/{slug}/projects/{project_id}/cycles/`
+**GET** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/cycles/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
@@ -727,17 +727,17 @@ MCP tool: `cycle_list`
 
 MCP tool: `cycle_get`
 
-**GET** `/api/v1/workspaces/{slug}/projects/{project_id}/cycles/{pk}/`
+**GET** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/cycles/{resource_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--pk` | string | yes | resource UUID — use `list` to discover |
+| `--resource-id` | string | yes | |
 
 ### `plane cycle list-work-items`
 
 MCP tool: `cycle_list_work_items`
 
-**GET** `/api/v1/workspaces/{slug}/projects/{project_id}/cycles/{cycle_id}/cycle-issues/`
+**GET** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/cycles/{cycle_id}/cycle-issues/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
@@ -749,7 +749,7 @@ MCP tool: `cycle_list_work_items`
 
 MCP tool: `cycle_list_archived`
 
-**GET** `/api/v1/workspaces/{slug}/projects/{project_id}/archived-cycles/`
+**GET** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/archived-cycles/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
@@ -760,11 +760,11 @@ MCP tool: `cycle_list_archived`
 
 MCP tool: `cycle_update`
 
-**PATCH** `/api/v1/workspaces/{slug}/projects/{project_id}/cycles/{pk}/`
+**PATCH** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/cycles/{resource_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--pk` | string | yes | resource UUID — use `list` to discover |
+| `--resource-id` | string | yes | |
 | `--description` | string | no | |
 | `--end-date` | string | no | |
 | `--external-id` | string | no | |
@@ -778,7 +778,7 @@ MCP tool: `cycle_update`
 
 MCP tool: `cycle_unarchive`
 
-**DELETE** `/api/v1/workspaces/{slug}/projects/{project_id}/archived-cycles/{cycle_id}/unarchive/`
+**DELETE** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/archived-cycles/{cycle_id}/unarchive/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
@@ -788,22 +788,22 @@ MCP tool: `cycle_unarchive`
 
 MCP tool: `cycle_remove_work_item`
 
-**DELETE** `/api/v1/workspaces/{slug}/projects/{project_id}/cycles/{cycle_id}/cycle-issues/{issue_id}/`
+**DELETE** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/cycles/{cycle_id}/cycle-issues/{work_item_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
 | `--cycle-id` | string | yes | accepts name or UUID |
-| `--issue-id` | string | yes | |
+| `--work-item-id` | string | yes | accepts UUID or sequence ID (e.g. PROJ-42) |
 
 ### `plane cycle delete`
 
 MCP tool: `cycle_delete`
 
-**DELETE** `/api/v1/workspaces/{slug}/projects/{project_id}/cycles/{pk}/`
+**DELETE** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/cycles/{resource_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--pk` | string | yes | resource UUID — use `list` to discover |
+| `--resource-id` | string | yes | |
 
 
 ### `plane cycle ensure`
@@ -816,7 +816,7 @@ Idempotent create-or-update by name. Accepts the same flags as create/update.
 
 MCP tool: `module_create`
 
-**POST** `/api/v1/workspaces/{slug}/projects/{project_id}/modules/`
+**POST** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/modules/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
@@ -834,7 +834,7 @@ MCP tool: `module_create`
 
 MCP tool: `module_add_work_items`
 
-**POST** `/api/v1/workspaces/{slug}/projects/{project_id}/modules/{module_id}/module-issues/`
+**POST** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/modules/{module_id}/module-issues/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
@@ -845,17 +845,17 @@ MCP tool: `module_add_work_items`
 
 MCP tool: `module_archive`
 
-**POST** `/api/v1/workspaces/{slug}/projects/{project_id}/modules/{pk}/archive/`
+**POST** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/modules/{resource_id}/archive/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--pk` | string | yes | resource UUID — use `list` to discover |
+| `--resource-id` | string | yes | |
 
 ### `plane module list`
 
 MCP tool: `module_list`
 
-**GET** `/api/v1/workspaces/{slug}/projects/{project_id}/modules/`
+**GET** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/modules/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
@@ -869,17 +869,17 @@ MCP tool: `module_list`
 
 MCP tool: `module_get`
 
-**GET** `/api/v1/workspaces/{slug}/projects/{project_id}/modules/{pk}/`
+**GET** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/modules/{resource_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--pk` | string | yes | resource UUID — use `list` to discover |
+| `--resource-id` | string | yes | |
 
 ### `plane module list-work-items`
 
 MCP tool: `module_list_work_items`
 
-**GET** `/api/v1/workspaces/{slug}/projects/{project_id}/modules/{module_id}/module-issues/`
+**GET** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/modules/{module_id}/module-issues/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
@@ -894,7 +894,7 @@ MCP tool: `module_list_work_items`
 
 MCP tool: `module_list_archived`
 
-**GET** `/api/v1/workspaces/{slug}/projects/{project_id}/archived-modules/`
+**GET** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/archived-modules/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
@@ -908,11 +908,11 @@ MCP tool: `module_list_archived`
 
 MCP tool: `module_update`
 
-**PATCH** `/api/v1/workspaces/{slug}/projects/{project_id}/modules/{pk}/`
+**PATCH** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/modules/{resource_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--pk` | string | yes | resource UUID — use `list` to discover |
+| `--resource-id` | string | yes | |
 | `--description` | string | no | |
 | `--external-id` | string | no | |
 | `--external-source` | string | no | |
@@ -927,32 +927,32 @@ MCP tool: `module_update`
 
 MCP tool: `module_unarchive`
 
-**DELETE** `/api/v1/workspaces/{slug}/projects/{project_id}/archived-modules/{pk}/unarchive/`
+**DELETE** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/archived-modules/{resource_id}/unarchive/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--pk` | string | yes | resource UUID — use `list` to discover |
+| `--resource-id` | string | yes | |
 
 ### `plane module remove-work-item`
 
 MCP tool: `module_remove_work_item`
 
-**DELETE** `/api/v1/workspaces/{slug}/projects/{project_id}/modules/{module_id}/module-issues/{issue_id}/`
+**DELETE** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/modules/{module_id}/module-issues/{work_item_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--issue-id` | string | yes | |
 | `--module-id` | string | yes | accepts name or UUID |
+| `--work-item-id` | string | yes | accepts UUID or sequence ID (e.g. PROJ-42) |
 
 ### `plane module delete`
 
 MCP tool: `module_delete`
 
-**DELETE** `/api/v1/workspaces/{slug}/projects/{project_id}/modules/{pk}/`
+**DELETE** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/modules/{resource_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--pk` | string | yes | resource UUID — use `list` to discover |
+| `--resource-id` | string | yes | |
 
 
 ### `plane module ensure`
@@ -965,7 +965,7 @@ Idempotent create-or-update by name. Accepts the same flags as create/update.
 
 MCP tool: `page_add_workspace`
 
-**POST** `/api/v1/workspaces/{slug}/pages/`
+**POST** `/api/v1/workspaces/{workspace_slug}/pages/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
@@ -984,7 +984,7 @@ MCP tool: `page_add_workspace`
 
 MCP tool: `page_add_project`
 
-**POST** `/api/v1/workspaces/{slug}/projects/{project_id}/pages/`
+**POST** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/pages/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
@@ -1003,21 +1003,21 @@ MCP tool: `page_add_project`
 
 MCP tool: `page_get_workspace`
 
-**GET** `/api/v1/workspaces/{slug}/pages/{pk}/`
+**GET** `/api/v1/workspaces/{workspace_slug}/pages/{page_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--pk` | string | yes | resource UUID — use `list` to discover |
+| `--page-id` | string | yes | |
 
 ### `plane page get-project`
 
 MCP tool: `page_get_project`
 
-**GET** `/api/v1/workspaces/{slug}/projects/{project_id}/pages/{pk}/`
+**GET** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/pages/{page_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--pk` | string | yes | resource UUID — use `list` to discover |
+| `--page-id` | string | yes | |
 
 
 ## Intake
@@ -1026,7 +1026,7 @@ MCP tool: `page_get_project`
 
 MCP tool: `intake_add`
 
-**POST** `/api/v1/workspaces/{slug}/projects/{project_id}/intake-issues/`
+**POST** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/intake-issues/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
@@ -1036,7 +1036,7 @@ MCP tool: `intake_add`
 
 MCP tool: `intake_list`
 
-**GET** `/api/v1/workspaces/{slug}/projects/{project_id}/intake-issues/`
+**GET** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/intake-issues/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
@@ -1049,21 +1049,21 @@ MCP tool: `intake_list`
 
 MCP tool: `intake_get`
 
-**GET** `/api/v1/workspaces/{slug}/projects/{project_id}/intake-issues/{issue_id}/`
+**GET** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/intake-issues/{work_item_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--issue-id` | string | yes | |
+| `--work-item-id` | string | yes | accepts UUID or sequence ID (e.g. PROJ-42) |
 
 ### `plane intake update`
 
 MCP tool: `intake_update`
 
-**PATCH** `/api/v1/workspaces/{slug}/projects/{project_id}/intake-issues/{issue_id}/`
+**PATCH** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/intake-issues/{work_item_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--issue-id` | string | yes | |
+| `--work-item-id` | string | yes | accepts UUID or sequence ID (e.g. PROJ-42) |
 | `--duplicate-to` | string | no | |
 | `--issue` | string | no | |
 | `--snoozed-till` | string | no | |
@@ -1075,11 +1075,11 @@ MCP tool: `intake_update`
 
 MCP tool: `intake_delete`
 
-**DELETE** `/api/v1/workspaces/{slug}/projects/{project_id}/intake-issues/{issue_id}/`
+**DELETE** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/intake-issues/{work_item_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--issue-id` | string | yes | |
+| `--work-item-id` | string | yes | accepts UUID or sequence ID (e.g. PROJ-42) |
 
 
 ### `plane intake ensure`
@@ -1092,11 +1092,11 @@ Idempotent create-or-update by name. Accepts the same flags as create/update.
 
 MCP tool: `worklog_create`
 
-**POST** `/api/v1/workspaces/{slug}/projects/{project_id}/work-items/{issue_id}/worklogs/`
+**POST** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/work-items/{work_item_id}/worklogs/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--issue-id` | string | yes | |
+| `--work-item-id` | string | yes | accepts UUID or sequence ID (e.g. PROJ-42) |
 | `--created-by` | string | no | |
 | `--description` | string | no | |
 | `--duration` | number | no | |
@@ -1106,28 +1106,28 @@ MCP tool: `worklog_create`
 
 MCP tool: `worklog_get_for_issue`
 
-**GET** `/api/v1/workspaces/{slug}/projects/{project_id}/work-items/{issue_id}/worklogs/`
+**GET** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/work-items/{work_item_id}/worklogs/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--issue-id` | string | yes | |
+| `--work-item-id` | string | yes | accepts UUID or sequence ID (e.g. PROJ-42) |
 
 ### `plane worklog get-total-time`
 
 MCP tool: `worklog_get_total_time`
 
-**GET** `/api/v1/workspaces/{slug}/projects/{project_id}/total-worklogs/`
+**GET** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/total-worklogs/`
 
 ### `plane worklog update`
 
 MCP tool: `worklog_update`
 
-**PATCH** `/api/v1/workspaces/{slug}/projects/{project_id}/work-items/{issue_id}/worklogs/{pk}/`
+**PATCH** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/work-items/{work_item_id}/worklogs/{worklog_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--issue-id` | string | yes | |
-| `--pk` | string | yes | resource UUID — use `list` to discover |
+| `--work-item-id` | string | yes | accepts UUID or sequence ID (e.g. PROJ-42) |
+| `--worklog-id` | string | yes | |
 | `--created-by` | string | no | |
 | `--description` | string | no | |
 | `--duration` | number | no | |
@@ -1137,12 +1137,12 @@ MCP tool: `worklog_update`
 
 MCP tool: `worklog_delete`
 
-**DELETE** `/api/v1/workspaces/{slug}/projects/{project_id}/work-items/{issue_id}/worklogs/{pk}/`
+**DELETE** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/work-items/{work_item_id}/worklogs/{worklog_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--issue-id` | string | yes | |
-| `--pk` | string | yes | resource UUID — use `list` to discover |
+| `--work-item-id` | string | yes | accepts UUID or sequence ID (e.g. PROJ-42) |
+| `--worklog-id` | string | yes | |
 
 
 ## Epic
@@ -1151,7 +1151,7 @@ MCP tool: `worklog_delete`
 
 MCP tool: `epic_list`
 
-**GET** `/api/v1/workspaces/{slug}/projects/{project_id}/epics/`
+**GET** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/epics/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
@@ -1162,11 +1162,11 @@ MCP tool: `epic_list`
 
 MCP tool: `epic_get`
 
-**GET** `/api/v1/workspaces/{slug}/projects/{project_id}/epics/{pk}/`
+**GET** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/epics/{resource_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--pk` | string | yes | resource UUID — use `list` to discover |
+| `--resource-id` | string | yes | |
 | `--fields` | string | no | |
 
 
@@ -1176,7 +1176,7 @@ MCP tool: `epic_get`
 
 MCP tool: `initiative_create`
 
-**POST** `/api/v1/workspaces/{slug}/initiatives/`
+**POST** `/api/v1/workspaces/{workspace_slug}/initiatives/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
@@ -1196,7 +1196,7 @@ MCP tool: `initiative_create`
 
 MCP tool: `initiative_list`
 
-**GET** `/api/v1/workspaces/{slug}/initiatives/`
+**GET** `/api/v1/workspaces/{workspace_slug}/initiatives/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
@@ -1207,21 +1207,21 @@ MCP tool: `initiative_list`
 
 MCP tool: `initiative_get`
 
-**GET** `/api/v1/workspaces/{slug}/initiatives/{pk}/`
+**GET** `/api/v1/workspaces/{workspace_slug}/initiatives/{initiative_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--pk` | string | yes | resource UUID — use `list` to discover |
+| `--initiative-id` | string | yes | |
 
 ### `plane initiative update`
 
 MCP tool: `initiative_update`
 
-**PATCH** `/api/v1/workspaces/{slug}/initiatives/{pk}/`
+**PATCH** `/api/v1/workspaces/{workspace_slug}/initiatives/{initiative_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--pk` | string | yes | resource UUID — use `list` to discover |
+| `--initiative-id` | string | yes | |
 | `--archived-at` | string | no | |
 | `--created-by` | string | no | |
 | `--description` | string | no | |
@@ -1238,11 +1238,11 @@ MCP tool: `initiative_update`
 
 MCP tool: `initiative_delete`
 
-**DELETE** `/api/v1/workspaces/{slug}/initiatives/{pk}/`
+**DELETE** `/api/v1/workspaces/{workspace_slug}/initiatives/{initiative_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--pk` | string | yes | resource UUID — use `list` to discover |
+| `--initiative-id` | string | yes | |
 
 
 ### `plane initiative ensure`
@@ -1255,7 +1255,7 @@ Idempotent create-or-update by name. Accepts the same flags as create/update.
 
 MCP tool: `customer_add`
 
-**POST** `/api/v1/workspaces/{slug}/customers/`
+**POST** `/api/v1/workspaces/{workspace_slug}/customers/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
@@ -1279,7 +1279,7 @@ MCP tool: `customer_add`
 
 MCP tool: `customer_link_work_items`
 
-**POST** `/api/v1/workspaces/{slug}/customers/{customer_id}/issues/`
+**POST** `/api/v1/workspaces/{workspace_slug}/customers/{customer_id}/issues/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
@@ -1290,23 +1290,23 @@ MCP tool: `customer_link_work_items`
 
 MCP tool: `customer_list`
 
-**GET** `/api/v1/workspaces/{slug}/customers/`
+**GET** `/api/v1/workspaces/{workspace_slug}/customers/`
 
 ### `plane customer get`
 
 MCP tool: `customer_get`
 
-**GET** `/api/v1/workspaces/{slug}/customers/{pk}/`
+**GET** `/api/v1/workspaces/{workspace_slug}/customers/{resource_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--pk` | string | yes | resource UUID — use `list` to discover |
+| `--resource-id` | string | yes | |
 
 ### `plane customer list-work-items`
 
 MCP tool: `customer_list_work_items`
 
-**GET** `/api/v1/workspaces/{slug}/customers/{customer_id}/issues/`
+**GET** `/api/v1/workspaces/{workspace_slug}/customers/{customer_id}/issues/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
@@ -1316,11 +1316,11 @@ MCP tool: `customer_list_work_items`
 
 MCP tool: `customer_update`
 
-**PATCH** `/api/v1/workspaces/{slug}/customers/{pk}/`
+**PATCH** `/api/v1/workspaces/{workspace_slug}/customers/{resource_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--pk` | string | yes | resource UUID — use `list` to discover |
+| `--resource-id` | string | yes | |
 | `--archived-at` | string | no | |
 | `--contract-status` | string | no | |
 | `--created-by` | string | no | |
@@ -1341,22 +1341,22 @@ MCP tool: `customer_update`
 
 MCP tool: `customer_unlink_work_item`
 
-**DELETE** `/api/v1/workspaces/{slug}/customers/{customer_id}/issues/{issue_id}/`
+**DELETE** `/api/v1/workspaces/{workspace_slug}/customers/{customer_id}/issues/{work_item_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
 | `--customer-id` | string | yes | |
-| `--issue-id` | string | yes | |
+| `--work-item-id` | string | yes | accepts UUID or sequence ID (e.g. PROJ-42) |
 
 ### `plane customer delete`
 
 MCP tool: `customer_delete`
 
-**DELETE** `/api/v1/workspaces/{slug}/customers/{pk}/`
+**DELETE** `/api/v1/workspaces/{workspace_slug}/customers/{resource_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--pk` | string | yes | resource UUID — use `list` to discover |
+| `--resource-id` | string | yes | |
 
 
 ### `plane customer ensure`
@@ -1369,7 +1369,7 @@ Idempotent create-or-update by name. Accepts the same flags as create/update.
 
 MCP tool: `teamspace_create`
 
-**POST** `/api/v1/workspaces/{slug}/teamspaces/`
+**POST** `/api/v1/workspaces/{workspace_slug}/teamspaces/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
@@ -1386,7 +1386,7 @@ MCP tool: `teamspace_create`
 
 MCP tool: `teamspace_list`
 
-**GET** `/api/v1/workspaces/{slug}/teamspaces/`
+**GET** `/api/v1/workspaces/{workspace_slug}/teamspaces/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
@@ -1397,21 +1397,21 @@ MCP tool: `teamspace_list`
 
 MCP tool: `teamspace_get`
 
-**GET** `/api/v1/workspaces/{slug}/teamspaces/{pk}/`
+**GET** `/api/v1/workspaces/{workspace_slug}/teamspaces/{resource_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--pk` | string | yes | resource UUID — use `list` to discover |
+| `--resource-id` | string | yes | |
 
 ### `plane teamspace update`
 
 MCP tool: `teamspace_update`
 
-**PATCH** `/api/v1/workspaces/{slug}/teamspaces/{pk}/`
+**PATCH** `/api/v1/workspaces/{workspace_slug}/teamspaces/{resource_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--pk` | string | yes | resource UUID — use `list` to discover |
+| `--resource-id` | string | yes | |
 | `--created-by` | string | no | |
 | `--description` | string | no | |
 | `--description-json` | string | no | |
@@ -1425,11 +1425,11 @@ MCP tool: `teamspace_update`
 
 MCP tool: `teamspace_delete`
 
-**DELETE** `/api/v1/workspaces/{slug}/teamspaces/{pk}/`
+**DELETE** `/api/v1/workspaces/{workspace_slug}/teamspaces/{resource_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--pk` | string | yes | resource UUID — use `list` to discover |
+| `--resource-id` | string | yes | |
 
 
 ### `plane teamspace ensure`
@@ -1442,7 +1442,7 @@ Idempotent create-or-update by name. Accepts the same flags as create/update.
 
 MCP tool: `sticky_add`
 
-**POST** `/api/v1/workspaces/{slug}/stickies/`
+**POST** `/api/v1/workspaces/{workspace_slug}/stickies/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
@@ -1461,27 +1461,27 @@ MCP tool: `sticky_add`
 
 MCP tool: `sticky_list`
 
-**GET** `/api/v1/workspaces/{slug}/stickies/`
+**GET** `/api/v1/workspaces/{workspace_slug}/stickies/`
 
 ### `plane sticky get`
 
 MCP tool: `sticky_get`
 
-**GET** `/api/v1/workspaces/{slug}/stickies/{pk}/`
+**GET** `/api/v1/workspaces/{workspace_slug}/stickies/{resource_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--pk` | string | yes | resource UUID — use `list` to discover |
+| `--resource-id` | string | yes | |
 
 ### `plane sticky update`
 
 MCP tool: `sticky_update`
 
-**PATCH** `/api/v1/workspaces/{slug}/stickies/{pk}/`
+**PATCH** `/api/v1/workspaces/{workspace_slug}/stickies/{resource_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--pk` | string | yes | resource UUID — use `list` to discover |
+| `--resource-id` | string | yes | |
 | `--background-color` | string | no | |
 | `--color` | string | no | |
 | `--created-by` | string | no | |
@@ -1497,11 +1497,11 @@ MCP tool: `sticky_update`
 
 MCP tool: `sticky_delete`
 
-**DELETE** `/api/v1/workspaces/{slug}/stickies/{pk}/`
+**DELETE** `/api/v1/workspaces/{workspace_slug}/stickies/{resource_id}/`
 
 | Flag | Type | Required | Notes |
 |------|------|----------|-------|
-| `--pk` | string | yes | resource UUID — use `list` to discover |
+| `--resource-id` | string | yes | |
 
 
 ### `plane sticky ensure`
@@ -1514,12 +1514,12 @@ Idempotent create-or-update by name. Accepts the same flags as create/update.
 
 MCP tool: `member_get_workspace`
 
-**GET** `/api/v1/workspaces/{slug}/members/`
+**GET** `/api/v1/workspaces/{workspace_slug}/members/`
 
 ### `plane member get-project`
 
 MCP tool: `member_get_project`
 
-**GET** `/api/v1/workspaces/{slug}/projects/{project_id}/project-members/`
+**GET** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/project-members/`
 
 
