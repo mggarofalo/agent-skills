@@ -33,23 +33,32 @@ This skill supports two modes. Detect which mode you are in **before starting St
 
 ---
 
-## Critical Rule: Never Fix Incidental Breakage in a Feature PR
+## Critical Rule: Isolate Incidental Breakage
 
-If you encounter pre-existing build, test, or lint breakage on your branch that is **unrelated to your assigned issue scope**:
+If you encounter pre-existing build, test, or lint breakage on your branch that is **unrelated to your assigned issue scope**, the goal is to keep the fix *separable* — reviewable and revertable on its own — not to avoid fixing it.
 
-1. **STOP.** Do not fix it as a side effect of your work.
-2. Use the `/fix-develop` skill (or invoke its workflow manually):
-   - Stash current work
-   - Branch from develop (or main if no develop branch exists)
-   - Make the minimal fix
-   - Open a PR with `fix(scope): ...` referencing the breakage (no Plane issue required for trivial fixes)
-   - Wait for merge
-   - Rebase your original branch onto the fix
-   - Pop stash and resume
+**First, confirm it is actually pre-existing.** Check out the base branch (or `git stash` your work) and re-run the failing command. If it fails there too, it is pre-existing. Say so explicitly in the PR description. If it only fails on your branch, it is yours — fix it inline as normal work.
 
-**Why:** Incidental fixes in feature PRs cause collateral merge damage when parallel agents fix the same breakage differently. Each agent's local fix is rational; the divergence at merge time produces cascading conflicts.
+Then pick the path that matches your situation:
 
-**Exception:** If the breakage is one line and clearly typo-level (e.g., a missing semicolon you can fix in 30 seconds), you may fix it with a separate commit in your branch labeled `fix: incidental ...`. But if it touches more than one file or requires judgment, route through `/fix-develop`.
+**Path A — the breakage blocks your commit** (pre-commit hooks run the full suite, so you cannot commit at all until it passes). This is the common case; do not fight it.
+1. Fix it with the **minimum** change that unblocks you.
+2. Commit it **separately, before your feature work**, labeled `fix: incidental <what> (pre-existing on <base>)`. Never fold it into a feature commit.
+3. File a Plane issue recording the breakage and your fix, so the root cause is tracked:
+   ```bash
+   plane issue create -p <PROJECT> --name "fix: <breakage>" --description "Pre-existing on <base>, patched incidentally in <branch>. Root cause not addressed." --priority medium
+   ```
+4. Call it out under a **Pre-existing breakage** heading in the PR description.
+
+**Path B — the breakage does not block you** (it is in a test you are not running, a file you are not touching, or CI-only). Do not fix it. File the Plane issue as above and note it in the PR description. Leave the code alone.
+
+**Path C — the fix is large, risky, or needs judgment** (touches many files, changes shared behavior, or you are unsure it is correct). Stop and surface it.
+- **Interactive:** ask the user how to proceed.
+- **Autonomous:** file the Plane issue, note the blocker in the PR description, and continue with whatever scope you *can* complete. Do not guess at a broad fix.
+
+**Why separability matters:** when parallel agents each fix the same breakage differently inside their own feature commits, the divergence produces cascading merge conflicts. A separate, clearly-labeled commit rebases and reverts cleanly; a fix buried inside a feature commit does not.
+
+**Never** silence breakage to get past it — no skipping tests, no `--no-verify`, no suppressing lint rules, no `TreatWarningsAsErrors` downgrades. If you cannot fix it honestly, use Path C.
 
 ---
 
@@ -143,13 +152,42 @@ EOF
 
 **You are not done. Continue to step 8.**
 
-## Step 8: Run bug analysis and React render-cycle QA
+## Step 8: Run analyses
 
-Run these analyses **in parallel** — they are independent:
+Determine what the diff actually contains, then run the applicable analyses **in parallel** — they are independent.
 
-1. **Bug analysis**: Invoke `/find-bugs` on the PR you just created.
-2. **React render-cycle QA** (conditional): Check whether the diff contains React files (`*.tsx`, `*.jsx` under `src/client/`). If yes, launch the `react-render-qa` agent via the Task tool:
+```bash
+gh pr diff --name-only > "$TEMP/changed-files.txt"
+```
 
+**8a. Bug analysis** — always runs. Invoke `/find-bugs` on the PR you just created.
+
+**8b. OWASP sanity check** — a quick read of your own diff, not a formal audit. Skip for docs- or asset-only diffs. Read the changed lines once more and ask whether this change introduces any of:
+
+- **Access control** — a new endpoint, query, or handler that does not check the caller owns the resource
+- **Injection** — user input reaching SQL/shell/HTML without parameterization or escaping (including `dangerouslySetInnerHTML`)
+- **Secrets** — a key, token, connection string, or password added to code, config, or a test fixture
+- **Sensitive data** — PII or credentials newly written to logs, error responses, or client-visible payloads
+- **Auth** — a change to login, session, token, or password-reset logic
+- **Deserialization / SSRF** — untrusted input deserialized, or used to build a URL the server then fetches
+- **Dependencies** — a new package added, or a version pinned backwards
+
+Most diffs hit none of these — say nothing and move on. If one *does* apply, note it in the PR description and treat a real problem as a confirmed bug in Step 9. Only if the diff looks broadly security-sensitive (touches auth, or adds an externally-reachable surface) escalate to the full static scan:
+```
+/owasp-top-10 --diff
+```
+
+**8c. React render-cycle QA** — conditional, and **repo-dependent**. Run it only if *both* of these hold:
+1. The diff contains `.tsx` or `.jsx` files — check the actual paths, do not assume a directory layout:
+   ```bash
+   grep -qE '\.(tsx|jsx)$' "$TEMP/changed-files.txt" && echo "react files present"
+   ```
+2. A `react-render-qa` agent is actually available in this repo — it is defined per-repo, not globally:
+   ```bash
+   ls .claude/agents/react-render-qa.md 2>/dev/null
+   ```
+
+If both hold, launch it via the Task tool:
 ```
 Task tool:
   subagent_type: react-render-qa
@@ -158,24 +196,26 @@ Task tool:
     Run `gh pr diff` to get the diff, then follow your analysis workflow.
 ```
 
-If no React files are in the diff, skip the React QA.
+If there are no React files, skip 8c silently — it is not applicable and needs no commentary. If there **are** React files but no `react-render-qa` agent in this repo, also skip it, but say so in one line in the PR description so the gap is visible: `React files changed but no react-render-qa agent is defined in this repo.` Never invoke a `subagent_type` you have not confirmed exists — the Task call will fail.
 
-Wait for both analyses to complete. Read the report files.
+Wait for all launched analyses to complete. Read the report files.
 
 **You are not done. Continue to step 9.**
 
 ## Step 9: Triage analysis results
 
-Triage results from **both** bug analysis and React render-cycle QA (if it ran).
+Triage results from every analysis that actually ran in Step 8. Analyses you skipped produce no findings and need no entry here.
 
-**React render-cycle QA findings:**
+**OWASP sanity-check findings (8b):** Treat anything you flagged as a confirmed bug — fix it before merging. Security problems do not become follow-up issues.
+
+**React render-cycle QA findings (8c):**
 - **CRITICAL or HIGH findings:** These are bugs. Fix them before merging — same as confirmed bugs below.
 - **MEDIUM findings:** File Plane issues for each (same as follow-up recommendations below):
   ```bash
   plane issue create -p <PROJECT> --name "<title>" --description-html "<description>" --priority medium
   ```
 
-**Bug analysis findings:**
+**Bug analysis findings (8a):**
 
 **If there are follow-up recommendations:** File Plane issues for each:
 ```bash
@@ -297,11 +337,11 @@ Projects with frontend dependencies should configure a `WorktreeCreate` hook in 
 1. **Read `.parallel-sensitive`** in the target repo root (if it exists). This file lists paths that are known to produce collateral merge damage when modified by parallel agents (e.g., shared config, lockfiles, entity base classes, DI registration files). One glob or path per line; lines starting with `#` are comments.
 2. **Predict scope for each pending issue.** Read each issue's description and infer which files it will touch. Be explicit — write the predicted file set into your plan.
 3. **Check for scope collisions against `.parallel-sensitive`.** If two pending scopes both intersect a path listed in `.parallel-sensitive`, do NOT parallelize those two issues — serialize them instead.
-4. **Check develop health.** If develop (or main, for repos without develop) is currently red (failing CI, broken build, failing tests), do NOT dispatch parallel agents. Fix develop first via `/fix-develop`, wait for it to merge, then dispatch.
+4. **Check base-branch health.** If the base branch (`develop`, or `main` for repos without develop) is currently red — failing CI, broken build, failing tests — do NOT dispatch parallel agents. Every agent would independently trip over the same breakage and fix it differently. Land a fix on the base branch first, wait for it to merge, then dispatch.
 
 ### Constraints
 
 - Only parallelize issues that don't touch the same files. If two issues modify the same code, work them sequentially.
 - The parent agent should not duplicate work the subagent is doing.
 - Each agent handles its own bug analysis and follow-up issue filing.
-- Each subagent must honor the **Critical Rule: Never Fix Incidental Breakage in a Feature PR** — if it hits pre-existing breakage, it routes through `/fix-develop` instead of fixing in-branch.
+- Each subagent must honor the **Critical Rule: Isolate Incidental Breakage** — pre-existing breakage gets its own labeled commit and a Plane issue, never folded into a feature commit. This matters most under parallel dispatch, where several agents hit the same breakage at once.

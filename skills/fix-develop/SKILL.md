@@ -1,10 +1,11 @@
 ---
 name: fix-develop
 description: >
-  Codifies the "never fix incidental breakage in a feature PR" workflow.
-  Stash in-progress work, branch from develop, land a minimal fix, rebase
-  the original branch, and resume. Invokable from within work-issue/sdlc
-  agents when they detect pre-existing breakage.
+  Land a fix on the base branch as its own PR without polluting the feature
+  branch you are on. Stashes in-progress work, branches from develop (or main),
+  lands a minimal fix, rebases the original branch, and resumes. Invoke
+  deliberately when breakage deserves an independent PR — routine incidental
+  breakage is handled inside work-issue instead.
 allowed-tools: Bash, Read, Write, Edit, Glob, Grep
 user_invocable: true
 argument: "[issue-id-or-description] — optional context for the breakage being fixed"
@@ -20,9 +21,9 @@ This is a **checklist you must execute**, not documentation. Every step has a si
 
 ## When to Use
 
-- A work-issue or sdlc agent encountered a failing build, failing test, or lint error on its feature branch that is clearly **not** introduced by its own changes and **not** within its assigned scope.
 - The user explicitly invokes `/fix-develop` with a breakage description.
-- Any other scenario where a minimal fix belongs on `develop` rather than inside a feature PR.
+- A `work-issue` agent hit pre-existing breakage that is substantial enough to warrant its own PR — see **Relationship to `work-issue`** below for where that line falls. Routine incidental breakage does *not* come here.
+- Several branches are blocked on the same breakage and one fix on the base branch unblocks them all.
 
 ## When NOT to Use
 
@@ -207,11 +208,17 @@ The invoker can now resume its work.
 - **Never merge your own fix PR without the user's approval** in interactive mode. In autonomous mode, stop at Step 8 and return the URL.
 - If any step fails in a way you can't recover from: restore `ORIGINAL_BRANCH`, pop the stash, and surface the error. Leave the repo in the state you found it.
 
-## Invocation from Other Skills
+## Relationship to `work-issue`
 
-The `work-issue` and `sdlc` skills reference this skill in their "Critical Rule: Never Fix Incidental Breakage in a Feature PR" sections. When those skills detect pre-existing breakage, they should:
+**This skill is invoked deliberately, not automatically.** `work-issue` does not route here on every pre-existing failure, and it should not — this workflow blocks on a full PR round-trip, which is unaffordable in the middle of a task. An earlier version of `work-issue` did mandate that route; in practice it was never once taken, because pre-commit hooks run the full suite and an agent that cannot commit cannot afford to wait for a merge.
 
-1. Pause their own workflow.
-2. Invoke `/fix-develop <issue-id-or-description>`.
-3. Wait for it to complete (interactive) or surface the fix-PR URL and stop (autonomous).
-4. Resume their workflow only after the fix is merged and the rebase/stash-pop have completed.
+`work-issue` now handles routine incidental breakage itself under **Critical Rule: Isolate Incidental Breakage** — minimum fix, separate labeled commit, Plane issue filed. That covers the common case.
+
+Reach for `/fix-develop` instead when the fix genuinely deserves to be its own PR:
+
+- The breakage is significant enough that reviewers should see it independently of any feature work.
+- Several branches are blocked by the same breakage, and landing it once on the base branch unblocks all of them.
+- The fix touches shared behavior, and burying it in a feature PR would hide a real behavioral change.
+- The user asks for it explicitly.
+
+If you are inside a `work-issue` run and unsure, prefer `work-issue`'s Path A (separate labeled commit) and keep moving. Stopping a task to open and await a fix PR is the exception, not the default.
