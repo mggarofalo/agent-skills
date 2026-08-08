@@ -28,6 +28,61 @@ from prompts import (
 
 MAX_DIFF_CHARS = 100_000
 
+# Agent output routinely contains characters outside Latin-1 — arrows, em dashes,
+# box drawing, emoji. On Windows the default text encoding is the locale codepage
+# (cp1252 here), which cannot represent them. Every file this script writes is
+# opened with an explicit encoding; this only covers the console streams, where a
+# character the terminal cannot render must never be allowed to kill a run.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, ValueError):  # not a reconfigurable text stream
+        pass
+
+
+def write_text(path: str, content: str) -> str:
+    """Write text as UTF-8, never losing content to a write failure.
+
+    Returns the path actually written. Agent stages cost 5-15 minutes each, so a
+    failure here must not destroy completed work: if the normal write fails for
+    any reason, fall back to writing raw UTF-8 bytes alongside it.
+    """
+    try:
+        with open(path, "w", encoding="utf-8", newline="") as f:
+            f.write(content)
+        return path
+    except Exception as e:  # noqa: BLE001 — last-resort persistence, re-raising loses the work
+        blob = content.encode("utf-8", errors="surrogatepass")
+
+        # First fallback: raw bytes beside the intended file, bypassing the text layer.
+        fallback = path + ".raw"
+        try:
+            with open(fallback, "wb") as f:
+                f.write(blob)
+            print(
+                f"Warning: could not write {path} ({e}); raw output preserved at {fallback}",
+                file=sys.stderr,
+            )
+            return fallback
+        except Exception:  # noqa: BLE001 — the whole output directory may be gone
+            pass
+
+        # Second fallback: somewhere else entirely. The output directory itself may
+        # be unwritable or deleted, and a stage costs 5-15 minutes to reproduce.
+        try:
+            fd, rescue = tempfile.mkstemp(prefix="pr-bug-finder-rescue-", suffix=".md")
+            with os.fdopen(fd, "wb") as f:
+                f.write(blob)
+            print(
+                f"Warning: could not write {path} or {fallback} ({e}); "
+                f"output rescued to {rescue}",
+                file=sys.stderr,
+            )
+            return rescue
+        except Exception as inner:  # noqa: BLE001
+            print(f"FATAL: could not persist output anywhere: {inner}", file=sys.stderr)
+            raise
+
 
 def fetch_pr_diff(pr_url: str, cwd: str) -> str:
     """Fetch a PR diff using the gh CLI."""
@@ -120,7 +175,7 @@ def read_diff_input(path: str) -> str:
     if path == "-":
         return sys.stdin.read()
     try:
-        with open(path) as f:
+        with open(path, encoding="utf-8") as f:
             return f.read()
     except OSError as e:
         print(f"Error reading diff file: {e}", file=sys.stderr)
@@ -174,42 +229,112 @@ async def run_agent(
     prompt: str,
     options: ClaudeAgentOptions,
     timer: Timer,
+    raw_path: str | None = None,
 ) -> str:
-    """Run a single agent, stream progress to stderr, return all text output."""
+    """Run a single agent, stream progress to stderr, return all text output.
+
+    If `raw_path` is given, each block of agent text is appended to that file and
+    flushed the moment it arrives. A stage costs 5-15 minutes, so its output must
+    already be on disk before anything downstream — including this function's own
+    return — has a chance to throw.
+
+    That streamed file is crash insurance only. The caller still performs the
+    authoritative write once the stage completes, so a stage whose stream file
+    could not be opened is not left unpersisted.
+
+    If the agent reports an error, any partial stream file is deleted: a truncated
+    stage must never look complete to a later `--resume`.
+    """
     stderr = sys.stderr
     print(f"\n{timer.elapsed()} ▶ {label}", file=stderr)
     agent_start = time.monotonic()
     tool_calls = 0
     text_parts: list[str] = []
 
-    async for message in query(prompt=prompt, options=options):
-        if isinstance(message, ResultMessage):
-            if message.is_error:
-                print(f"{timer.elapsed()} ERROR: {message.result}", file=stderr)
-                return ""
-            if message.result:
-                text_parts.append(message.result)
-        elif isinstance(message, AssistantMessage):
-            for block in message.content:
-                if isinstance(block, TextBlock):
-                    text_parts.append(block.text)
-                    print(f"{timer.elapsed()} {block.text}", file=stderr)
-                elif isinstance(block, ThinkingBlock):
-                    print(f"{timer.elapsed()} [thinking] {block.thinking}", file=stderr)
-                elif isinstance(block, ToolUseBlock):
-                    tool_calls += 1
-                    print(f"{timer.elapsed()} 🔧 {block.name}({block.input})", file=stderr)
-        elif isinstance(message, SystemMessage):
-            subtype = getattr(message, "subtype", None)
-            if subtype:
-                print(f"{timer.elapsed()} ⚙ {subtype}", file=stderr)
+    raw_file = None
+    if raw_path:
+        try:
+            raw_file = open(raw_path, "w", encoding="utf-8", newline="")
+        except OSError as e:
+            # Degrade to in-memory only rather than refusing to run. The stage still
+            # produces output; it just loses crash protection, which is worth a warning.
+            print(
+                f"Warning: cannot stream {label} output to {raw_path} ({e}); "
+                f"continuing without incremental persistence.",
+                file=stderr,
+            )
+
+    def keep(text: str) -> None:
+        """Record a piece of agent output and persist it immediately."""
+        text_parts.append(text)
+        if raw_file:
+            raw_file.write(text)
+            raw_file.write("\n")
+            raw_file.flush()
+
+    def discard_partial() -> None:
+        """Drop a partial stream file so --resume cannot mistake it for a finished stage."""
+        nonlocal raw_file
+        if raw_file:
+            raw_file.close()
+            raw_file = None
+        if raw_path:
+            try:
+                os.unlink(raw_path)
+            except OSError:
+                pass
+
+    try:
+        async for message in query(prompt=prompt, options=options):
+            if isinstance(message, ResultMessage):
+                if message.is_error:
+                    print(f"{timer.elapsed()} ERROR: {message.result}", file=stderr)
+                    discard_partial()
+                    return ""
+                if message.result:
+                    keep(message.result)
+            elif isinstance(message, AssistantMessage):
+                for block in message.content:
+                    if isinstance(block, TextBlock):
+                        keep(block.text)
+                        print(f"{timer.elapsed()} {block.text}", file=stderr)
+                    elif isinstance(block, ThinkingBlock):
+                        print(f"{timer.elapsed()} [thinking] {block.thinking}", file=stderr)
+                    elif isinstance(block, ToolUseBlock):
+                        tool_calls += 1
+                        print(f"{timer.elapsed()} 🔧 {block.name}({block.input})", file=stderr)
+            elif isinstance(message, SystemMessage):
+                subtype = getattr(message, "subtype", None)
+                if subtype:
+                    print(f"{timer.elapsed()} ⚙ {subtype}", file=stderr)
+    finally:
+        if raw_file:
+            raw_file.close()
 
     duration = time.monotonic() - agent_start
     print(f"{timer.elapsed()} ✓ {label} done ({Timer.fmt(duration)}, {tool_calls} tool calls)", file=stderr)
     return "\n".join(text_parts)
 
 
-async def run_analysis(diff: str, cwd: str, out_dir: str) -> None:
+def load_stage(path: str) -> tuple[str, str] | None:
+    """Return (content, actual_path) for a completed stage, or None if absent.
+
+    Returns the path the content actually came from, which may be the `.raw`
+    fallback rather than the canonical name — callers report that path onward,
+    so a resumed run never points at a file that does not exist.
+    """
+    for candidate in (path, path + ".raw"):
+        try:
+            with open(candidate, encoding="utf-8") as f:
+                content = f.read()
+        except OSError:
+            continue
+        if content.strip():
+            return content, candidate
+    return None
+
+
+async def run_analysis(diff: str, cwd: str, out_dir: str, resume: bool = False) -> None:
     """Run the 3-step adversarial bug-finding pipeline."""
     timer = Timer()
     stderr = sys.stderr
@@ -222,83 +347,103 @@ async def run_analysis(diff: str, cwd: str, out_dir: str) -> None:
     os.makedirs(out_dir, exist_ok=True)
     print(f"{timer.elapsed()} Output dir: {out_dir}", file=stderr)
 
-    # Step 1: Bug Hunter
-    hunter_output = await run_agent(
-        label="Bug Hunter",
-        prompt=f"Analyze this diff for bugs.\n\n```diff\n{diff}\n```",
-        options=ClaudeAgentOptions(
-            system_prompt=build_hunter_prompt(),
-            allowed_tools=["Read", "Glob", "Grep"],
-            max_turns=100,
-            **base_opts,
-        ),
-        timer=timer,
-    )
-
-    if not hunter_output.strip():
-        print("Error: Bug Hunter produced no output.", file=stderr)
-        sys.exit(1)
-
     hunter_path = os.path.join(out_dir, "hunter.md")
-    with open(hunter_path, "w") as f:
-        f.write(hunter_output)
-    print(f"{timer.elapsed()} Hunter output → {hunter_path}", file=stderr)
-
-    # Step 2: Bug Challenger
-    challenger_output = await run_agent(
-        label="Bug Challenger",
-        prompt=(
-            f"Verify these bug reports against the codebase.\n\n"
-            f"## Diff\n```diff\n{diff}\n```\n\n"
-            f"## Hunter's Bug Report\n{hunter_output}"
-        ),
-        options=ClaudeAgentOptions(
-            system_prompt=build_challenger_prompt(),
-            allowed_tools=["Read", "Glob", "Grep"],
-            max_turns=100,
-            **base_opts,
-        ),
-        timer=timer,
-    )
-
-    if not challenger_output.strip():
-        print("Error: Bug Challenger produced no output.", file=stderr)
-        sys.exit(1)
-
     challenger_path = os.path.join(out_dir, "challenger.md")
-    with open(challenger_path, "w") as f:
-        f.write(challenger_output)
-    print(f"{timer.elapsed()} Challenger output → {challenger_path}", file=stderr)
+    report_path = os.path.join(out_dir, "report.md")
 
-    # Step 3: Synthesizer
-    report = await run_agent(
-        label="Synthesizer",
-        prompt=(
-            f"Synthesize the final bug analysis report.\n\n"
-            f"## Hunter Output\n{hunter_output}\n\n"
-            f"## Challenger Output\n{challenger_output}"
-        ),
-        options=ClaudeAgentOptions(
-            system_prompt=build_synthesizer_prompt(),
-            allowed_tools=[],
-            max_turns=5,
-            **base_opts,
-        ),
-        timer=timer,
-    )
-
-    # Write report to file
-    if not report.strip():
-        print("WARNING: Synthesizer produced no output. Using raw outputs.", file=stderr)
-        report = (
-            f"# PR Bug Analysis Report\n\n"
-            f"## Raw Hunter Output\n{hunter_output}\n\n"
-            f"## Raw Challenger Output\n{challenger_output}"
+    # Step 1: Bug Hunter
+    cached = load_stage(hunter_path) if resume else None
+    if cached:
+        hunter_output, hunter_path = cached
+        print(f"{timer.elapsed()} ⏩ Bug Hunter — reusing {hunter_path}", file=stderr)
+    else:
+        hunter_output = await run_agent(
+            label="Bug Hunter",
+            prompt=f"Analyze this diff for bugs.\n\n```diff\n{diff}\n```",
+            options=ClaudeAgentOptions(
+                system_prompt=build_hunter_prompt(),
+                allowed_tools=["Read", "Glob", "Grep"],
+                max_turns=100,
+                **base_opts,
+            ),
+            timer=timer,
+            raw_path=hunter_path,
         )
 
-    report_path = os.path.join(out_dir, "report.md")
-    with open(report_path, "w") as f:
-        f.write(report)
+        if not hunter_output.strip():
+            print("Error: Bug Hunter produced no output.", file=stderr)
+            sys.exit(1)
+
+        # Authoritative write. The streamed file was insurance; this is the record,
+        # and it runs even if streaming could not be opened at all.
+        hunter_path = write_text(hunter_path, hunter_output)
+        print(f"{timer.elapsed()} Hunter output → {hunter_path}", file=stderr)
+
+    # Step 2: Bug Challenger
+    cached = load_stage(challenger_path) if resume else None
+    if cached:
+        challenger_output, challenger_path = cached
+        print(f"{timer.elapsed()} ⏩ Bug Challenger — reusing {challenger_path}", file=stderr)
+    else:
+        challenger_output = await run_agent(
+            label="Bug Challenger",
+            prompt=(
+                f"Verify these bug reports against the codebase.\n\n"
+                f"## Diff\n```diff\n{diff}\n```\n\n"
+                f"## Hunter's Bug Report\n{hunter_output}"
+            ),
+            options=ClaudeAgentOptions(
+                system_prompt=build_challenger_prompt(),
+                allowed_tools=["Read", "Glob", "Grep"],
+                max_turns=100,
+                **base_opts,
+            ),
+            timer=timer,
+            raw_path=challenger_path,
+        )
+
+        if not challenger_output.strip():
+            print("Error: Bug Challenger produced no output.", file=stderr)
+            sys.exit(1)
+
+        challenger_path = write_text(challenger_path, challenger_output)
+        print(f"{timer.elapsed()} Challenger output → {challenger_path}", file=stderr)
+
+    # Step 3: Synthesizer
+    cached = load_stage(report_path) if resume else None
+    if cached:
+        report, report_path = cached
+        print(f"{timer.elapsed()} ⏩ Synthesizer — reusing {report_path}", file=stderr)
+    else:
+        report = await run_agent(
+            label="Synthesizer",
+            prompt=(
+                f"Synthesize the final bug analysis report.\n\n"
+                f"## Hunter Output\n{hunter_output}\n\n"
+                f"## Challenger Output\n{challenger_output}"
+            ),
+            options=ClaudeAgentOptions(
+                system_prompt=build_synthesizer_prompt(),
+                allowed_tools=[],
+                max_turns=5,
+                **base_opts,
+            ),
+            timer=timer,
+            raw_path=report_path,
+        )
+
+        # The synthesizer is the only stage that may legitimately return nothing;
+        # fall back to the raw upstream output rather than failing the run. Both
+        # hunter and challenger already cost minutes each — never discard them.
+        if not report.strip():
+            print("WARNING: Synthesizer produced no output. Using raw outputs.", file=stderr)
+            report = (
+                f"# PR Bug Analysis Report\n\n"
+                f"## Raw Hunter Output\n{hunter_output}\n\n"
+                f"## Raw Challenger Output\n{challenger_output}"
+            )
+
+        report_path = write_text(report_path, report)
 
     # Stats
     print(f"\n{'─' * 40}", file=stderr)
@@ -338,8 +483,24 @@ def main() -> None:
         metavar="DIR",
         help="Directory for output files (default: auto-created in /tmp)",
     )
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help=(
+            "Skip any stage whose output file already exists in --output-dir. "
+            "Each stage costs 5-15 minutes, so use this to pick up after a failure "
+            "instead of re-running completed work. Requires --output-dir."
+        ),
+    )
 
     args = parser.parse_args()
+
+    if args.resume and not args.output_dir:
+        print(
+            "Error: --resume requires --output-dir (a fresh temp dir has nothing to resume from).",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
     sources = sum([bool(args.pr_url), bool(args.diff), args.local])
     if sources == 0:
@@ -370,7 +531,7 @@ def main() -> None:
 
     out_dir = args.output_dir or tempfile.mkdtemp(prefix="pr-bug-finder-")
     try:
-        asyncio.run(run_analysis(diff, cwd, out_dir))
+        asyncio.run(run_analysis(diff, cwd, out_dir, resume=args.resume))
     finally:
         if previous_branch:
             restore_branch(previous_branch, cwd)
