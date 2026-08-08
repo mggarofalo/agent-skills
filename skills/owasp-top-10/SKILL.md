@@ -1,24 +1,27 @@
 ---
 name: owasp-top-10
 description: >
-  Audit codebases and running applications against the OWASP Top 10 (2021).
-  Static code analysis, dependency scanning, and runtime browser testing.
-  Reports findings by severity with OWASP category references.
-allowed-tools: Bash, Read, Grep, Glob, mcp__aspire__list_resources, mcp__aspire__list_console_logs
+  Audit a codebase against the OWASP Top 10 (2021) using static code analysis
+  and dependency scanning. Scopes to a path or to the current diff. Reports
+  findings by severity with OWASP category references.
+allowed-tools: Bash, Read, Grep, Glob
 user_invocable: true
-argument: "<path|--diff|--app <url>|--full>"
+argument: "<path|--diff|--deps>"
 ---
 
 # OWASP Top 10 Security Audit
 
-Audit codebases and running applications against the OWASP Top 10 (2021) using static code analysis, dependency scanning, and agent-browser runtime testing. Reports findings by severity (CRITICAL/HIGH/MEDIUM/LOW) with OWASP category references.
+Audit a codebase against the OWASP Top 10 (2021) using static code analysis and dependency scanning. Reports findings by severity (CRITICAL/HIGH/MEDIUM/LOW) with OWASP category references.
+
+This skill is **static only** — it reads code and dependency manifests. It does not drive a browser and does not need a running app.
 
 ## Usage
 
 - `/owasp-top-10 <path>` — Static scan of specific files or directories
 - `/owasp-top-10 --diff` — Scan only git-changed files (staged + unstaged)
-- `/owasp-top-10 --app <url>` — Runtime testing only against a running application
-- `/owasp-top-10 --full` — Static + dependency + runtime (full audit)
+- `/owasp-top-10 --deps` — Dependency audit only
+
+For a quick per-PR judgment call rather than a full scan, `work-issue` Step 8b carries a short OWASP checklist to apply directly to a diff. Escalate here when a diff looks broadly security-sensitive.
 
 ## Phase 1: Setup & Target Resolution
 
@@ -28,8 +31,9 @@ Parse the argument string to determine audit mode:
 
 1. **Path** (does not start with `--`): Static scan of that path. Can be a file or directory.
 2. **`--diff`**: Run `git diff --name-only HEAD` and `git diff --name-only --cached` to get changed files. Filter to code files only (exclude images, binaries, lock files). Static scan those files.
-3. **`--app <url>`**: Skip static analysis, run runtime checks against the given URL.
-4. **`--full`**: Run all three phases — static, dependency, and runtime. For runtime, discover the app URL via Aspire or ask the user.
+3. **`--deps`**: Skip static pattern scanning; run Phase 3 (dependency audit) only.
+
+With no argument, scan the repository root.
 
 ### Detect Tech Stack
 
@@ -48,11 +52,10 @@ Use Glob to check for these files at the project root. Record all detected stack
 
 ### Read Reference Files
 
-Load the three reference files for use throughout the audit:
+Load both reference files for use throughout the audit:
 
 1. `~/.claude/skills/owasp-top-10/references/owasp-checklist.md` — Category-to-check mapping
 2. `~/.claude/skills/owasp-top-10/references/static-patterns.md` — Grep patterns per stack
-3. `~/.claude/skills/owasp-top-10/references/runtime-checks.md` — agent-browser commands
 
 ### Determine Scan Targets
 
@@ -60,14 +63,8 @@ Based on the mode:
 
 - **Path mode**: Glob for code files under the given path. Exclude: `node_modules/`, `bin/`, `obj/`, `dist/`, `build/`, `Generated/`, `*.g.cs`, `*.Designer.cs`, `vendor/`, `.git/`, `__pycache__/`, `*.min.js`, `*.bundle.js`.
 - **Diff mode**: Use the git-changed file list, applying the same exclusions.
-- **App mode**: No file targets needed.
-- **Full mode**: Glob from repository root with exclusions, plus runtime targets.
-
-### Discover App URL (for `--app` and `--full` modes)
-
-1. Use `mcp__aspire__list_resources` to check for running Aspire resources.
-2. If Aspire is running, use `mcp__aspire__list_console_logs` to find the actual frontend port (Aspire assigns random ports — never assume defaults).
-3. If no Aspire: check for common dev server configs, or ask the user for the URL.
+- **Deps mode**: No file targets needed.
+- **No argument**: Glob from repository root with the same exclusions.
 
 ### Initialize Tracking
 
@@ -78,7 +75,7 @@ findings = [] // { category, severity, check_id, check_name, detail, file, line 
 
 ## Phase 2: Static Code Analysis
 
-**Skip this phase if mode is `--app`.**
+**Skip this phase if mode is `--deps`.**
 
 For each detected tech stack, run the patterns from `static-patterns.md`. Only run patterns that match detected stacks. Universal patterns run for all stacks.
 
@@ -110,7 +107,7 @@ Skip findings in:
 
 ## Phase 3: Dependency Audit
 
-**Skip this phase if mode is `--app`.**
+**Skip this phase if mode is `--diff`** — a diff scan is about the changed lines, not the whole dependency tree. Run it in path mode, `--deps` mode, and no-argument mode.
 
 Run available dependency audit tools. Only use tools already installed — do not install new tools.
 
@@ -146,149 +143,6 @@ Use whichever is available. Map to **A06**.
 
 If a tool is not installed, note it in the report as a gap:
 > "Dependency audit for {stack} skipped — `{tool}` not installed."
-
-## Phase 4: Runtime Testing
-
-**Skip this phase if mode is `<path>` or `--diff`.**
-
-For the target URL, perform runtime security checks using agent-browser. Each command MUST be a separate Bash tool call (no `&&` chaining — hooks will reject it). All screenshots go to `$TEMP`.
-
-### 4.1: Open the Target
-
-```
-agent-browser open <url>
-```
-
-Wait for the page to load:
-```
-sleep 3
-```
-
-Take a baseline screenshot:
-```
-agent-browser screenshot "$TEMP/owasp-baseline.png"
-```
-
-Read the screenshot to verify the page loaded.
-
-### 4.2: Security Headers Check
-
-Fetch the page headers using JavaScript:
-```
-agent-browser eval "fetch(window.location.href).then(r => Object.fromEntries(r.headers)).then(h => JSON.stringify(h))"
-```
-
-Check for the presence and values of security headers. Refer to `runtime-checks.md` for the full header list and evaluation criteria. Key headers:
-
-| Header | Missing = | OWASP Category |
-|--------|-----------|----------------|
-| `Strict-Transport-Security` | HIGH | A05 |
-| `Content-Security-Policy` | HIGH | A05 |
-| `X-Content-Type-Options` | MEDIUM | A05 |
-| `X-Frame-Options` or CSP `frame-ancestors` | MEDIUM | A05 |
-| `Referrer-Policy` | LOW | A05 |
-| `Permissions-Policy` | LOW | A05 |
-
-### 4.3: Cookie Security Check
-
-Inspect cookie attributes:
-```
-agent-browser eval "document.cookie"
-```
-
-Check each cookie for:
-- `HttpOnly` flag (if sensitive) — not visible via `document.cookie` means it IS HttpOnly
-- `Secure` flag — MEDIUM if missing on auth cookies
-- `SameSite` attribute — MEDIUM if missing
-
-Note: Cookies visible to `document.cookie` are NOT HttpOnly. Auth/session cookies that are visible = HIGH finding.
-
-### 4.4: Web Storage Inspection
-
-Check for sensitive data in localStorage and sessionStorage:
-```
-agent-browser eval "JSON.stringify(localStorage)"
-```
-```
-agent-browser eval "JSON.stringify(sessionStorage)"
-```
-
-Flag as HIGH if tokens, passwords, PII, or API keys are found in web storage. Map to **A02: Cryptographic Failures** (sensitive data exposure).
-
-### 4.5: XSS Testing
-
-If the page has form inputs, test common XSS payloads:
-
-1. Take a snapshot to find form fields:
-   ```
-   agent-browser snapshot -i
-   ```
-
-2. For each text input field, try injecting a test payload:
-   ```
-   agent-browser fill @<element-ref> "<img src=x onerror=alert(1)>"
-   ```
-
-3. Submit the form if possible, then check if the payload appears unescaped:
-   ```
-   agent-browser snapshot
-   ```
-
-4. Check for the payload in the DOM:
-   ```
-   agent-browser eval "document.body.innerHTML.includes('<img src=x onerror')"
-   ```
-
-Flag unescaped payloads as CRITICAL (A03: Injection / XSS).
-
-### 4.6: Open Redirect Testing
-
-If the URL has redirect-like parameters (`redirect`, `return`, `next`, `url`, `goto`, `dest`):
-
-```
-agent-browser open "<base-url>?redirect=https://evil.example.com"
-```
-
-After navigation, check the resulting URL:
-```
-agent-browser get url
-```
-
-If the browser navigated to `evil.example.com`, flag as HIGH (A01: Broken Access Control).
-
-### 4.7: Console and Error Inspection
-
-Check for security-relevant console output:
-```
-agent-browser errors
-```
-```
-agent-browser console
-```
-
-Look for:
-- CSP violations → informational (confirms CSP is working)
-- Mixed content warnings → MEDIUM (A05)
-- CORS errors that indicate misconfiguration → MEDIUM (A05)
-- Logged secrets, tokens, or stack traces → HIGH (A09)
-
-### 4.8: Inline Script Detection
-
-Check for inline scripts without CSP nonces:
-```
-agent-browser eval "document.querySelectorAll('script:not([src]):not([nonce])').length"
-```
-
-If count > 0 and no CSP header is set, flag as MEDIUM (A05: Security Misconfiguration).
-
-### 4.9: CSRF Token Presence
-
-For each form on the page:
-```
-agent-browser eval "Array.from(document.forms).map(f => ({action: f.action, method: f.method, hasToken: !!f.querySelector('input[name*=token],input[name*=csrf],input[name*=__RequestVerificationToken]')}))"
-```
-
-Flag POST forms without CSRF tokens as HIGH (A01: Broken Access Control), unless the form uses a non-standard CSRF mechanism (check for custom headers in fetch interceptors).
 
 ## Phase 5: Report Generation
 
@@ -345,26 +199,6 @@ After all applicable phases complete, compile findings into a markdown report. D
 
 ---
 
-## Runtime Testing Results
-
-**Target:** {url}
-
-### Security Headers
-| Header | Status | Finding |
-|--------|--------|---------|
-| {name} | Present/Missing | {detail} |
-
-### Cookie Security
-{findings or "No insecure cookies detected."}
-
-### XSS Testing
-{findings or "No XSS vulnerabilities detected."}
-
-### Additional Runtime Checks
-{CSRF, open redirect, console errors, web storage findings}
-
----
-
 ## Recommendations
 
 {3-5 prioritized recommendations for the most impactful security improvements}
@@ -396,21 +230,13 @@ This audit covers automated checks against the OWASP Top 10 (2021). The followin
 
 ## Phase 6: Cleanup
 
-1. If runtime testing was performed, close agent-browser:
-   ```
-   agent-browser close
-   ```
-
-2. Print a summary line:
-   ```
-   Audited {N} files, {M} dependencies, {P} runtime checks. Found {C} critical, {H} high, {M} medium, {L} low. Result: {PASS/FAIL}
-   ```
+Print a summary line:
+```
+Audited {N} files, {M} dependencies. Found {C} critical, {H} high, {M} medium, {L} low. Result: {PASS/FAIL}
+```
 
 ## Important Notes
 
-- **Hook compliance**: Every `agent-browser` command MUST be a separate Bash tool call. Never chain with `&&`, `||`, or `;`.
-- **Screenshots**: Always save to `$TEMP`, never to the working directory.
-- **Aspire ports**: Never assume port numbers. Always check `list_console_logs` for the actual port.
 - **No false positives**: Use context-aware analysis. If unsure, note it as an observation in Recommendations rather than counting it as a finding.
 - **Generated code**: Skip `*.g.cs`, `Generated/`, `node_modules/`, etc. Findings in generated code are not actionable.
 - **Test files**: Findings in test files are noted separately at lower severity — test code is not production attack surface.

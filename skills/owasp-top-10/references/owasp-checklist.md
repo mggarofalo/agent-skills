@@ -137,5 +137,5 @@ Checks organized by OWASP category. Each check indicates the audit method (Stati
 |--------|-------------|
 | **Static** | Grep/read patterns in source code |
 | **Dependency** | Package vulnerability scanning tools |
-| **Runtime** | agent-browser inspection of running application |
+| **Runtime** | Requires inspecting a running application — **out of scope for this skill**, which is static-only. Rows marked Runtime are listed so the coverage gap is visible; report them under Scope & Limitations rather than as passes. |
 | **Manual** | Requires human judgment — noted in report but not auto-checked |
