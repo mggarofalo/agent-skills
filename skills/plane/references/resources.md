@@ -1,6 +1,6 @@
 # Plane CLI Resource Reference
 
-Auto-generated on 2026-08-08.
+Auto-generated on 2026-08-10.
 
 ## Project
 
@@ -394,6 +394,47 @@ MCP tool: `issue_delete`
 ### `plane issue ensure`
 
 Idempotent create-or-update by name. Accepts the same flags as create/update.
+
+## Relation
+
+### `plane relation create`
+
+MCP tool: `relation_create`
+
+**POST** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/work-items/{work_item_id}/relations/`
+
+| Flag | Type | Required | Notes |
+|------|------|----------|-------|
+| `--issues` | string[] | yes | accepts UUID or sequence ID (e.g. PROJ-42) |
+| `--relation-type` | string | yes | |
+| `--work-item-id` | string | yes | accepts UUID or sequence ID (e.g. PROJ-42) |
+
+### `plane relation list`
+
+MCP tool: `relation_list`
+
+**GET** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/work-items/{work_item_id}/relations/`
+
+| Flag | Type | Required | Notes |
+|------|------|----------|-------|
+| `--work-item-id` | string | yes | accepts UUID or sequence ID (e.g. PROJ-42) |
+| `--cursor` | string | no | |
+| `--expand` | string | no | |
+| `--fields` | string | no | |
+| `--order-by` | string | no | |
+| `--per-page` | number | no | enum: 20, max |
+
+### `plane relation remove`
+
+MCP tool: `relation_remove`
+
+**POST** `/api/v1/workspaces/{workspace_slug}/projects/{project_id}/work-items/{work_item_id}/relations/remove/`
+
+| Flag | Type | Required | Notes |
+|------|------|----------|-------|
+| `--related-issue` | string | yes | accepts UUID or sequence ID (e.g. PROJ-42) |
+| `--work-item-id` | string | yes | accepts UUID or sequence ID (e.g. PROJ-42) |
+
 
 ## Link
 

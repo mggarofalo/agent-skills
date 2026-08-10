@@ -1,7 +1,7 @@
 ---
 name: plane
 description: >
-  Plane project management CLI and MCP server — 105 actions across 19 resource types.
+  Plane project management CLI and MCP server — 108 actions across 20 resource types.
   TRIGGER when: user mentions Plane issues, work items, cycles, modules, labels, states, projects, epics,
   initiatives, intakes, or any project-management CRUD. Also when MCP tools like issue_create, state_list,
   cycle_update etc. are available. Provides name resolution, batch mode, ensure (idempotent upsert),
@@ -12,7 +12,7 @@ user_invocable: false
 
 # Plane CLI Reference
 
-Auto-generated on 2026-08-08. 105 actions across 19 resource types.
+Auto-generated on 2026-08-10. 108 actions across 20 resource types.
 
 ## Quick Start
 
@@ -101,6 +101,7 @@ plane <topic> ensure --name "value" [--other-flags...]
 | state | 5 | yes |
 | label | 5 | yes |
 | issue | 7 | yes |
+| relation | 3 | no |
 | link | 5 | no |
 | activity | 2 | no |
 | comment | 5 | no |
