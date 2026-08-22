@@ -46,13 +46,29 @@ def deny(reason: str) -> None:
     sys.exit(0)
 
 
+def fail_closed(reason: str) -> None:
+    """Deny because the guard could not reach a decision at all.
+
+    Exit 2 with a reason on stderr is the only failure signal both Claude Code
+    and Codex treat as a block; every other nonzero status permits the call.
+    """
+    sys.stderr.write(f"BLOCKED (guard error, failing closed): {reason}\n")
+    sys.exit(2)
+
+
 def normalize(p: str) -> str:
     """Normalize a path to forward slashes for consistent comparison."""
     return p.replace("\\", "/").rstrip("/")
 
 
 def main() -> None:
-    payload = json.loads(sys.stdin.read())
+    try:
+        payload = json.loads(sys.stdin.read())
+    except ValueError as exc:
+        fail_closed(f"unparseable hook payload: {exc}")
+
+    if not isinstance(payload, dict):
+        fail_closed(f"hook payload was {type(payload).__name__}, expected object")
 
     tool_name = payload.get("tool_name", "")
     if tool_name not in TOOL_PATH_KEYS:
@@ -107,4 +123,9 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except SystemExit:
+        raise
+    except BaseException as exc:  # noqa: BLE001 — any failure must deny
+        fail_closed(f"{type(exc).__name__}: {exc}")

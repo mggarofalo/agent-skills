@@ -66,6 +66,19 @@ def deny(reason: str) -> None:
     sys.exit(0)
 
 
+def fail_closed(reason: str) -> None:
+    """Deny because the guard could not reach a decision at all.
+
+    Exit code 2 is used rather than the JSON protocol above. Both Claude Code
+    and Codex treat exit 2 (with a reason on stderr) as a block, and it is the
+    only signal that still works when stdout is unusable or the payload never
+    parsed. Every other exit status — including 1 — is treated by both hosts as
+    "hook failed", which permits the operation.
+    """
+    sys.stderr.write(f"BLOCKED (guard error, failing closed): {reason}\n")
+    sys.exit(2)
+
+
 # --- Path normalization ---
 
 # Resolve ~ once at import time
@@ -331,9 +344,24 @@ def check_bash_patterns(stripped: str) -> None:
 
 
 def main() -> None:
-    payload = json.loads(sys.stdin.read())
+    try:
+        raw = sys.stdin.read()
+    except Exception as exc:  # unreadable stdin — cannot evaluate the call
+        fail_closed(f"could not read hook payload: {exc}")
+
+    try:
+        payload = json.loads(raw)
+    except ValueError as exc:
+        fail_closed(f"unparseable hook payload: {exc}")
+
+    if not isinstance(payload, dict):
+        fail_closed(f"hook payload was {type(payload).__name__}, expected object")
+
     tool_name = payload.get("tool_name", "")
     tool_input = payload.get("tool_input") or {}
+
+    if not isinstance(tool_input, dict):
+        fail_closed(f"tool_input was {type(tool_input).__name__}, expected object")
 
     # --- File tool checks: Read, Write, Edit ---
 
@@ -341,6 +369,10 @@ def main() -> None:
         file_path = tool_input.get("file_path", "")
         if not file_path:
             sys.exit(0)
+        if not isinstance(file_path, str):
+            fail_closed(
+                f"{tool_name}.file_path was {type(file_path).__name__}, expected string"
+            )
 
         resolved = resolve_path(file_path)
 
@@ -371,6 +403,13 @@ def main() -> None:
         sys.exit(0)
 
     command = tool_input.get("command", "")
+    if not isinstance(command, str):
+        # Codex currently sends Bash.command as a string. If a host ever sends
+        # argv, the rules below would silently match nothing — deny instead.
+        fail_closed(
+            f"Bash.command was {type(command).__name__}, expected string; "
+            "the command rules cannot evaluate this payload"
+        )
     if not command.strip():
         sys.exit(0)
 
@@ -389,4 +428,9 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except SystemExit:
+        raise
+    except BaseException as exc:  # noqa: BLE001 — any failure must deny
+        fail_closed(f"{type(exc).__name__}: {exc}")
