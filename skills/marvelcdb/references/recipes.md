@@ -1,7 +1,8 @@
 # Pipeline Recipes
 
-Every command here was run against the live CLI. Card codes and decklist ids in
-the examples are real.
+Every command here was run against the live CLI, except the deck-editing section
+at the end — that one needs credentials and is marked as unverified. Card codes
+and decklist ids in the examples are real.
 
 ## Building a local corpus for a project
 
@@ -9,8 +10,9 @@ The whole corpus is one download. Dump it once and query the file, rather than
 shelling out per card:
 
 ```bash
-marvelcdb cards list --encounter -o json > cards.json   # 4,105 cards, everything
-marvelcdb cards list -o json > player-cards.json        # 2,155 cards, player side only
+marvelcdb cards list --encounter -o json > cards.json   # 4,105 — everything
+marvelcdb cards list --duplicates -o json > corpus.json # 2,155 — player side incl. reprints
+marvelcdb cards list -o json > player-cards.json        # 1,814 — player side, no reprints
 marvelcdb packs list -o json > packs.json
 ```
 
@@ -63,7 +65,16 @@ marvelcdb cards list --set spider_man -o ids \
   | xargs -n1 -P4 curl -sO
 ```
 
-`--back` gives the reverse face of a double-sided card instead.
+`--back` switches to the printed reverse image, but only 59 cards site-wide have
+one (57 are Main Schemes) and it exits 1 on any card that does not — so it is not
+useful across a whole set. For a hero's alter-ego, you want the linked card
+instead, which is a separate code:
+
+```bash
+marvelcdb cards get 01001a --with-linked -o json | jq -r '[.] | flatten | .[].code'
+# 01001a
+# 01001b
+```
 
 ## Filtering beyond what the flags cover
 
@@ -84,8 +95,11 @@ marvelcdb cards list --type upgrade --max-cost 1 --unique -o json \
   | jq -r 'group_by(.faction_name) | .[] | "\(.[0].faction_name): \(length)"'
 ```
 
-Fields are sparse — a hero has no `cost`, a resource has no `health`. Always
-default with `// 0` or `// ""` before comparing, or jq will error on null.
+Fields are sparse — a hero has no `cost`, a resource has no `health`. String
+functions such as `test()` error on the missing key, which is why `.text?  // ""`
+appears above. Numeric comparison is worse: it does not error, it just treats the
+missing key as lower than every number, so `select(.cost < 3)` silently includes
+every costless card. Default explicitly on both sides.
 
 ## Resolving a decklist's slots
 
@@ -148,6 +162,10 @@ predictable with `MARVELCDB_CACHE_DIR` if the CI runner's cache directory is not
 persisted between steps.
 
 ## Editing one of your decks
+
+**Unverified.** These need OAuth2 credentials, which were not available when this
+skill was written, so they are derived from `marvelcdb mydecks save --help` and
+`internal/cli/mydecks.go` rather than executed. Use `--dry-run` first.
 
 MarvelCDB replaces the whole slot list on every save, so read, edit, write back:
 
