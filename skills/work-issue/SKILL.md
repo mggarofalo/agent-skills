@@ -31,6 +31,45 @@ This skill supports two modes. Detect which mode you are in **before starting St
 - **Step 7**: Use `gh pr create --base <target-branch>` to target the specified branch.
 - This is common in batch processing where multiple issues aggregate into a single release branch.
 
+**Follow-up sensitivity**: the invoking prompt may set how aggressively Step 9 files follow-up issues (`follow-up sensitivity: <level>`). See below. Default is `normal`.
+
+---
+
+## Follow-up Sensitivity
+
+Step 8's bug analysis is adversarial — run against a mature or legacy codebase it will
+essentially always surface *something real*. Filing all of it is how a backlog becomes a
+branching process: every closed issue spawns more than one new issue, the backlog stops
+converging, and each generation drifts further from the goal (fixing the tooling that
+tests the fixes to the engine). This knob is the throttle.
+
+**The caller sets it in the invoking prompt.** If unset, use the repo's declared bar
+(below), else `normal`.
+
+| Level | File a follow-up issue when… |
+|---|---|
+| `all` | anything the analysis surfaced. Use when hardening a component you are about to build on. |
+| `normal` *(default)* | it changes user-visible or contract behavior, corrupts a persisted artefact, or blocks other tracked work. |
+| `strict` | it blocks the current milestone. Nothing else. |
+| `none` | never. Everything goes in the PR description. |
+
+**Nothing is discarded silently, at any level.** A finding that does not clear the bar is
+recorded in the PR description under a `## Observed, not filed` heading — one line each,
+with the file and a one-sentence claim. The information survives in the PR where the code
+lives; it just does not become backlog. If the user later wants one promoted, it is right
+there.
+
+**Two things the knob never suppresses**, because both are already handled as confirmed
+bugs rather than follow-ups:
+
+- Anything from the OWASP sanity check (8b). Security problems get fixed, not filed.
+- CRITICAL or HIGH render-cycle findings (8c).
+
+**A repo may declare its own bar.** If the repo's `AGENTS.md`/`CLAUDE.md` states a filing
+test, apply it instead of the generic level — it is more specific than anything this file
+can say. Quote it in the PR description when you use it to reject a finding, so the call
+is auditable.
+
 ---
 
 ## Critical Rule: Isolate Incidental Breakage
@@ -217,12 +256,17 @@ Triage results from every analysis that actually ran in Step 8. Analyses you ski
 
 **Bug analysis findings (8a):**
 
-**If there are follow-up recommendations:** File Plane issues for each:
+**If there are follow-up recommendations:** Adjudicate each against the active
+[follow-up sensitivity](#follow-up-sensitivity) level before filing. File the ones that
+clear the bar:
 ```bash
 plane issue create -p <PROJECT> --name "<title>" --description-html "<description>" --priority medium
 ```
 - **Interactive:** Ask the user which team/project if not obvious.
 - **Autonomous:** Use the same team and project as the source issue.
+
+List the ones that do not clear it under `## Observed, not filed` in the PR description.
+Do not drop them and do not file them.
 
 **If there are confirmed bugs:** Fix them, run pre-commit hooks until they pass, commit, and push.
 - **Interactive:** You may enter plan mode to plan remediation.

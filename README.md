@@ -76,6 +76,7 @@ Since `~/.claude/skills`, `commands`, and `agents` are symlinks into this repo, 
 | **marvelcdb** | MarvelCDB (Marvel Champions) card database CLI — pipeable local lookups, deckbuilding data, OAuth2 deck editing |
 | **owasp-top-10** | OWASP Top 10 security audit (static code and dependency scanning) |
 | **plane** | Plane CLI reference — auto-generated, regenerate after every CLI upgrade |
+| **qlmarkdown** | Render Markdown to standalone styled HTML via qlmarkdown_cli (cmark-gfm) |
 | **recall** | Search past Claude Code session history (temporal, topic, graph) |
 | **reflect** | Session retrospective — extract learnings, update memory and guidance files |
 | **resolve-conflicts** | Resolve merge conflicts on a PR by rebasing, resolving per-category, and force-pushing |
