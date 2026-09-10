@@ -1,0 +1,49 @@
+{
+  "description": "Personal Codex session-recall hooks.",
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "command": "/usr/bin/env python3 ~/.codex/hooks/session-end-export.py",
+            "timeout": 3,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "PostCompact": [
+      {
+        "hooks": [
+          {
+            "command": "/usr/bin/env python3 ~/.codex/hooks/session-end-export.py",
+            "timeout": 3,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "command": "/usr/bin/env python3 ~/.codex/hooks/session-end-export.py",
+            "timeout": 3,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "command": "/usr/bin/env python3 ~/.codex/hooks/session-end-export.py",
+            "timeout": 3,
+            "type": "command"
+          }
+        ]
+      }
+    ]
+  }
+}
