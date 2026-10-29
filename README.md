@@ -83,25 +83,20 @@ Claude links point at the top-level directories. Codex links point at `codex/`. 
 | **bulk-read** | Route large mechanical reads through a low-cost stateless worker and return source-located bullets |
 | **clear-writing** | Plain-English writing style for reports, summaries, and guidance |
 | **code-write** | Generate a new pattern-matching file from a required reference through a low-cost stateless worker |
+| **curriculum-research** | Compare and trial curricula against a learner’s observed skills and family constraints |
 | **fix-develop** | Land a fix on the base branch as its own PR, then rebase and resume |
 | **idiomatic-swift** | Build and review Swift and SwiftUI using current language conventions and native Apple platform behavior |
 | **init-repo** | GitHub repo scaffolding with CI, guidance files, branch-protection rulesets, and config per language |
+| **learning-expectations** | Interpret age and grade expectations from standards, milestones, and content guides |
 | **marvelcdb** | MarvelCDB (Marvel Champions) card database CLI — pipeable local lookups, deckbuilding data, OAuth2 deck editing |
 | **owasp-top-10** | OWASP Top 10 security audit (static code and dependency scanning) |
 | **plane** | Plane CLI reference — auto-generated, regenerate after every CLI upgrade |
 | **qlmarkdown** | Render Markdown to standalone styled HTML via qlmarkdown_cli (cmark-gfm) |
-| **recall** | Search past Claude Code session history (temporal, topic, graph) |
+| **recall** | Search past Claude Code and Codex session history (temporal, topic, graph) |
 | **reflect** | Session retrospective — extract learnings, update memory and guidance files |
 | **resolve-conflicts** | Resolve merge conflicts on a PR by rebasing, resolving per-category, and force-pushing |
 | **system-audit** | Audit Claude Code system for staleness, redundancy, gaps, and token waste |
 | **work-issue** | End-to-end Plane issue implementation workflow |
-
-### Codex-only skills
-
-| Skill | Description |
-|-------|-------------|
-| **curriculum-research** | Compare and trial curricula against a learner’s observed skills and family constraints |
-| **learning-expectations** | Interpret age and grade expectations from standards, milestones, and content guides |
 
 ### Commands
 
