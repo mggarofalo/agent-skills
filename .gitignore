@@ -31,3 +31,6 @@ credentials.json
 
 # Dependencies
 node_modules/
+
+# claude.ai skills that Claude Code syncs into ~/.claude/skills (a symlink to skills/)
+skills/synced/
