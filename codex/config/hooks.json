@@ -1,6 +1,50 @@
 {
-  "description": "Personal Codex session-recall hooks.",
+  "description": "Personal Codex safety and session-recall hooks.",
   "hooks": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "/usr/bin/env python3 ~/.codex/hooks/block-destructive-ops.py",
+            "statusMessage": "Checking destructive operation guard",
+            "timeout": 10,
+            "type": "command"
+          }
+        ],
+        "matcher": "Bash|Edit|Write"
+      },
+      {
+        "hooks": [
+          {
+            "command": "/usr/bin/env python3 ~/.codex/hooks/enforce-worktree-paths.py",
+            "statusMessage": "Checking worktree path",
+            "timeout": 10,
+            "type": "command"
+          }
+        ],
+        "matcher": "Edit|Write"
+      },
+      {
+        "hooks": [
+          {
+            "command": "/usr/bin/env python3 ~/.codex/hooks/route-large-reads.py",
+            "statusMessage": "Checking large-file read router",
+            "timeout": 10,
+            "type": "command"
+          }
+        ],
+        "matcher": "Bash"
+      },
+      {
+        "matcher": "^Bash$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/michael/.atuin/bin/atuin hook codex"
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [
@@ -41,6 +85,39 @@
             "command": "/usr/bin/env python3 ~/.codex/hooks/session-end-export.py",
             "timeout": 3,
             "type": "command"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "command": "bash '/Users/michael/.codex/herdr-agent-state.sh' session",
+            "timeout": 10,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "^Bash$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/michael/.atuin/bin/atuin hook codex"
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "^Bash$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/michael/.atuin/bin/atuin hook codex"
           }
         ]
       }

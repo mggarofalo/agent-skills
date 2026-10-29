@@ -1,0 +1,4 @@
+interface:
+  display_name: "Ramp Reimbursements"
+  short_description: "Cache AT&T bills and prepare monthly Ramp drafts"
+  default_prompt: "Use $ramp-reimbursements to collect my missing AT&T bills, update the local cache, and prepare my monthly phone and internet reimbursement drafts."

@@ -2,6 +2,26 @@
   "hooks": {
     "PreToolUse": [
       {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python ~/.claude/agent-router/read_guard.py --host claude --kind read",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python ~/.claude/agent-router/read_guard.py --host claude --kind bash",
+            "timeout": 10
+          }
+        ]
+      },
+      {
         "matcher": "Bash|Read|Edit|Write",
         "hooks": [
           {

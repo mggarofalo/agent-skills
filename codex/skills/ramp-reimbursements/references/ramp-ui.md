@@ -1,0 +1,15 @@
+# Ramp in Safari: observed workflow
+
+Use these as navigation hints, not assumptions about current controls. All UI inspection and actions use the supported computer-use API. Read its current documentation and re-query accessibility state after actions. Do not use saved element indices, private endpoints, browser storage, or the original session's reimbursement IDs.
+
+- The open Ramp session may be in native Safari even when browser discovery lists only an empty in-app browser. Discover enabled surfaces, then select Safari through `cua.getApp` when appropriate.
+- My expenses → Reimbursements contains saved drafts and completed requests. New reimbursement may show a personal-card connection offer; Skip continues to receipt upload. Do not connect a financial account for this task.
+- A required address form appeared once. Use current confirmed address information from the authorized bills if it is still applicable. Autocomplete filled city, state, and ZIP but left the street blank; inspect the completed form before continuing.
+- `Have multiple receipts? … click to upload` creates separate drafts. From the draft editor, `Create another reimbursement` → `Upload receipt` opens the batch upload area.
+- In a native file chooser, check the selected filenames and count before Upload. If unrelated files make selection awkward, copy only the unclaimed original PDFs to a task-local staging directory and choose from there. Do not alter or remove the Downloads originals.
+- Keyboard events sent rapidly lost some selections. One `shift+Down` followed by an accessibility read per step successfully selected a contiguous batch. Verify the final selection count; do not assume repeated keystrokes selected everything. `super+shift+Down` opened/uploaded the selected files rather than extending the range.
+- For Ramp's controlled text inputs, `setValue` cleared fields without reliably setting their values, and `typeText` sometimes truncated a memo during rerendering. Clicking the current field, selecting all, and using `paste` reliably entered complete amounts, memos, and dates. Blur afterward and read the new state. Native Go To Folder worked with `typeText` when clipboard paste timed out.
+- Search accounting dropdowns by exact code: `68005`, `68010`, `IT-001`, and `9831`. Select the observed matching label after results load. A broad `NetData` search showed multiple entities, while accessibility exposed only the first; exact-code search avoided selecting the wrong entity.
+- Some selected accounting values were absent from accessibility labels. A screenshot revealed them. The reimbursement list exposed the saved category, department, and location as readable cells, making it useful for final verification.
+- The editor automatically saved drafts and had a separate Submit button. Do not click Submit merely to validate a draft. The list's `Submit` action is also a submission control.
+- Future days were disabled in the date picker. Typed future dates did not persist even though the rest of the draft saved. Verify dates after navigation, not just in the input.

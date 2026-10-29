@@ -10,6 +10,14 @@ Registered in `~/.claude/settings.json` under `hooks` (`PreToolUse` for the guar
 
 ## Hook inventory
 
+### Large-file read router
+
+The shared `~/.claude/agent-router/read_guard.py` commands inspect `Read` and shell file-read
+calls before execution. Reads expected to return more than 350 lines are denied with an exact
+`bulk_read.py` delegation command. Targeted `Read` calls with `offset` and `limit <= 350`, and
+bounded `head`/`tail` calls, pass through. This cost guard fails open on malformed input; the
+safety hooks below remain authoritative.
+
 ### enforce-worktree-paths.py
 
 Blocks file tools (Read, Edit, Write, Glob, Grep) from escaping a git worktree. When an agent runs inside `.claude/worktrees/<name>/`, all file operations must target the worktree — not the original repo root.

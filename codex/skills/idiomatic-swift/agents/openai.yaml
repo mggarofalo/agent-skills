@@ -1,0 +1,4 @@
+interface:
+  display_name: "Idiomatic Swift"
+  short_description: "Prefer native Swift and SwiftUI patterns"
+  default_prompt: "Use $idiomatic-swift to review this Swift or SwiftUI work and replace unnecessary custom behavior with current platform conventions."

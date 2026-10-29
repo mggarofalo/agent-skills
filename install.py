@@ -6,6 +6,7 @@ and file symlinks for statusline and keybindings.
 Backs up any existing non-symlink targets before replacing them.
 """
 
+import json
 import os
 import shutil
 import subprocess
@@ -82,18 +83,44 @@ link_dir(REPO_DIR / "commands", CLAUDE_DIR / "commands")
 link_dir(REPO_DIR / "agents", CLAUDE_DIR / "agents")
 
 link_dir(REPO_DIR / "hooks", CLAUDE_DIR / "hooks")
+link_dir(REPO_DIR / "router", CLAUDE_DIR / "agent-router")
 
 # Symlink individual config files
 link_file(REPO_DIR / "config" / "statusline.py", CLAUDE_DIR / "statusline-command.py")
 link_file(REPO_DIR / "config" / "keybindings.json", CLAUDE_DIR / "keybindings.json")
 
-# Copy settings.json template if settings.json doesn't exist
+# Create settings from the template, or merge missing managed hooks into an existing file.
 settings_path = CLAUDE_DIR / "settings.json"
 if not settings_path.exists():
     shutil.copy2(REPO_DIR / "config" / "settings.json.example", settings_path)
     print(f"  [created] {settings_path} from template")
 else:
-    print(f"  [skip] {settings_path} already exists")
+    settings = json.loads(settings_path.read_text(encoding="utf-8"))
+    template = json.loads((REPO_DIR / "config" / "settings.json.example").read_text(encoding="utf-8"))
+    destination_hooks = settings.setdefault("hooks", {})
+    changed = False
+    for event, groups in template.get("hooks", {}).items():
+        destination_groups = destination_hooks.setdefault(event, [])
+        existing_commands = {
+            hook.get("command", "")
+            for group in destination_groups
+            for hook in group.get("hooks", [])
+        }
+        for group in groups:
+            commands = [hook.get("command", "") for hook in group.get("hooks", [])]
+            script_names = [Path(command.split(" --", 1)[0]).name for command in commands]
+            if any(any(name and name in existing for existing in existing_commands) for name in script_names):
+                continue
+            destination_groups.append(group)
+            existing_commands.update(commands)
+            changed = True
+    if changed:
+        backup_path = settings_path.with_name(f"settings.json.bak-agent-skills-{TIMESTAMP}")
+        shutil.copy2(settings_path, backup_path)
+        settings_path.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
+        print(f"  [updated] {settings_path} (backup: {backup_path.name})")
+    else:
+        print(f"  [ok] {settings_path} already contains managed hooks")
 
 # Install Python agent packages (any agents/<name>/pyproject.toml)
 for toml in sorted((REPO_DIR / "agents").glob("*/pyproject.toml")):

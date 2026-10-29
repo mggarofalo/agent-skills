@@ -1,0 +1,12 @@
+[tui]
+# Closest native equivalent to config/statusline.py. Codex status lines are
+# single-line and accept predefined items rather than an arbitrary command.
+status_line = [
+  "current-dir",
+  "git-branch",
+  "branch-changes",
+  "model-with-reasoning",
+  "context-used",
+  "used-tokens",
+  "estimated-thread-cost",
+]
