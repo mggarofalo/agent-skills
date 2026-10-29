@@ -93,6 +93,7 @@ Claude links point at the top-level directories. Codex links point at `codex/`. 
 | **plane** | Plane CLI reference — auto-generated, regenerate after every CLI upgrade |
 | **qlmarkdown** | Render Markdown to standalone styled HTML via qlmarkdown_cli (cmark-gfm) |
 | **recall** | Search past Claude Code and Codex session history (temporal, topic, graph) |
+| **ramp-reimbursements** | Collect AT&T bills into a local PDF cache and prepare monthly Ramp reimbursement drafts |
 | **reflect** | Session retrospective — extract learnings, update memory and guidance files |
 | **resolve-conflicts** | Resolve merge conflicts on a PR by rebasing, resolving per-category, and force-pushing |
 | **system-audit** | Audit Claude Code system for staleness, redundancy, gaps, and token waste |
@@ -144,7 +145,7 @@ calls at 30 seconds. Override their models with `AGENT_ROUTER_CLAUDE_MODEL` or
 
 The `codex/` tree carries rewritten versions of all 16 shared skills plus a native **find-bugs** skill. Claude's SDK bug-finder remains untouched; Codex uses a read-only `pr_bug_finder` custom agent and parallel reviewer workflow instead.
 
-The Codex-only **ramp-reimbursements** skill collects missing AT&T phone and internet bills, maintains a local PDF cache with expected billing dates, and prepares monthly Ramp drafts using the $75 phone cap, payment dates, duplicate checks, and pending-payment handling.
+The **ramp-reimbursements** skill (in both layers) collects missing AT&T phone and internet bills, maintains a local PDF cache with expected billing dates, and prepares monthly Ramp drafts using the $75 phone cap, payment dates, duplicate checks, and pending-payment handling.
 
 Codex hooks use native `Bash` and `apply_patch` events, route large shell reads through the shared worker, recognize Codex-managed Git worktrees, protect Codex configuration, and refresh Claude history in place plus Codex history under `~/.agent-history/codex-sessions`. Transcript refresh runs after every completed turn, compaction, subagent, and session. It parses only newly appended rollout bytes, preserves the full pre-compaction transcript in bounded chunks, coalesces concurrent workers, and runs QMD only when chunks changed. The live hook definition is `codex/config/hooks.json`.
 
