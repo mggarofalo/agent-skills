@@ -1,32 +1,60 @@
 #!/usr/bin/env python3
-"""SessionEnd hook: export the current session to Obsidian markdown and update QMD.
+"""Stop / SubagentStop / PostCompact / SessionEnd hook: refresh Claude session recall.
 
-The QMD refresh is spawned detached so it doesn't block terminal exit or trip the
-hook timeout — embedding a batch of sessions takes longer than the 30s budget.
-Its output lands in LOG_FILE rather than being swallowed.
+The hook itself only touches a PENDING marker and spawns a detached worker, so it
+returns in milliseconds and never blocks the session (it always exits 0; exit 2
+on Stop would prevent Claude from stopping).
+
+The worker holds a non-blocking flock. Any request arriving while it runs just
+re-touches PENDING, and the worker loops until no request is pending, so bursts
+of hook events coalesce into at most one extra refresh. Each refresh runs the
+incremental exporter and calls `qmd update` + `qmd embed -c Claude-sessions` only
+when an export actually changed. Output goes to LOG.
 """
 
+from __future__ import annotations
+
+import fcntl
+import json
 import os
 import shutil
 import subprocess
 import sys
+import time
+import traceback
 from pathlib import Path
 
-EXPORT_SCRIPT = Path.home() / "Source" / "agent-skills" / "skills" / "recall" / "export_sessions.py"
-LOG_FILE = Path.home() / ".claude" / "logs" / "session-end-export.log"
+ROOT = Path(__file__).resolve().parents[1]
+EXPORTER = ROOT / "skills" / "recall" / "export_sessions.py"
+LOG_DIR = Path(os.environ.get("CLAUDE_RECALL_LOG_DIR", Path.home() / ".claude" / "logs"))
+LOG = LOG_DIR / "session-end-export.log"
+LOCK = LOG_DIR / "session-recall.lock"
+PENDING = LOG_DIR / "session-recall.pending"
+COLLECTION = "Claude-sessions"
+LOG_MAX_BYTES = 1_000_000
+EXPORT_TIMEOUT = 300
+QMD_TIMEOUTS = {"update": 300, "embed": 1800}
+# Hooks may run with a minimal PATH; qmd is a `#!/usr/bin/env node` script.
+EXTRA_PATH = ("/opt/homebrew/bin", "/usr/local/bin")
 
 
 def resolve_qmd():
     """Return a runnable qmd command, or None if QMD isn't installed.
 
+    CLAUDE_RECALL_QMD overrides discovery (empty string disables QMD).
     Prefers `node <entry>.js` over the PATH shim: the shim is a .cmd/.ps1 wrapper
     whose location moves whenever the Node install changes.
     """
-    shim = shutil.which("qmd")
+    override = os.environ.get("CLAUDE_RECALL_QMD")
+    if override is not None:
+        return [override] if override else None
+
+    search = os.pathsep.join([os.environ.get("PATH", ""), *EXTRA_PATH])
+    shim = shutil.which("qmd", path=search)
     if not shim:
         return None
 
-    node = shutil.which("node")
+    node = shutil.which("node", path=search)
     if node:
         entry = Path(shim).parent / "node_modules" / "@tobilu" / "qmd" / "dist" / "cli" / "qmd.js"
         if entry.exists():
@@ -35,43 +63,131 @@ def resolve_qmd():
     return [shim]
 
 
-def refresh_qmd():
-    """Re-index and re-embed. Runs in the detached child."""
+def log_line(log, message: str) -> None:
+    stamp = time.strftime("%Y-%m-%dT%H:%M:%S%z")
+    log.write(f"[{stamp}] {message}\n")
+    log.flush()
+
+
+def child_env() -> dict[str, str]:
+    env = dict(os.environ)
+    env["PATH"] = os.pathsep.join([env.get("PATH", ""), *EXTRA_PATH])
+    return env
+
+
+def run_refresh(log) -> bool:
+    """Export once; refresh QMD only if an export changed. Returns success."""
+    try:
+        result = subprocess.run(
+            [sys.executable, str(EXPORTER), "--json"],
+            text=True, capture_output=True, check=False, timeout=EXPORT_TIMEOUT,
+        )
+    except subprocess.TimeoutExpired:
+        log_line(log, f"export timed out after {EXPORT_TIMEOUT}s")
+        return False
+    if result.stderr:
+        log.write(result.stderr)
+    if result.returncode != 0:
+        log_line(log, f"export failed with exit {result.returncode}: {result.stdout.strip()[:500]}")
+        return False
+    try:
+        stats = json.loads(result.stdout)
+        changed = stats["exported"]
+        log_line(log, "export " + json.dumps({k: v for k, v in stats.items() if v and k != "errors"}))
+        for error in stats.get("errors") or []:
+            log_line(log, f"export error: {error}")
+    except (json.JSONDecodeError, KeyError, TypeError):
+        log_line(log, f"unreadable exporter output; assuming changes: {result.stdout.strip()[:500]}")
+        changed = 1
+    if not changed:
+        log_line(log, "no session changes; skipped QMD refresh")
+        return True
+
     qmd = resolve_qmd()
     if not qmd:
-        return
+        log_line(log, "qmd is unavailable; exports remain ready for a later refresh")
+        return True
+    for command in (["update"], ["embed", "-c", COLLECTION]):
+        timeout = QMD_TIMEOUTS[command[0]]
+        try:
+            completed = subprocess.run(
+                [*qmd, *command], stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
+                env=child_env(), check=False, timeout=timeout,
+            )
+        except subprocess.TimeoutExpired:
+            log_line(log, f"qmd {' '.join(command)} timed out after {timeout}s")
+            return False
+        if completed.returncode != 0:
+            log_line(log, f"qmd {' '.join(command)} failed with exit {completed.returncode}")
+            return False
+    return True
 
-    LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with LOG_FILE.open("a", encoding="utf-8") as log:
-        for command in ("update", "embed"):
-            result = subprocess.run([*qmd, command], stdout=log, stderr=subprocess.STDOUT)
-            if result.returncode != 0:
-                log.write(f"qmd {command} exited {result.returncode}\n")
+
+def rotate_log() -> None:
+    try:
+        if LOG.stat().st_size > LOG_MAX_BYTES:
+            LOG.replace(LOG.with_name(LOG.name + ".1"))
+    except FileNotFoundError:
+        pass
+
+
+def drain_pending(log) -> None:
+    while PENDING.exists():
+        PENDING.unlink(missing_ok=True)
+        log_line(log, "refresh started")
+        try:
+            ok = run_refresh(log)
+        except Exception:  # keep the worker alive; the next request retries
+            log.write(traceback.format_exc())
+            ok = False
+        log_line(log, f"refresh {'finished' if ok else 'failed'}")
+
+
+def worker() -> None:
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    while True:
+        with LOCK.open("a+") as lock:
+            try:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                PENDING.touch()  # the lock holder re-checks PENDING after releasing
                 return
+            rotate_log()
+            with LOG.open("a", encoding="utf-8") as log:
+                drain_pending(log)
+        # A request may have landed between the last check and the unlock, and
+        # its worker would have lost the lock race; pick it up here.
+        if not PENDING.exists():
+            return
 
 
-def main():
-    if "--refresh" in sys.argv:
-        refresh_qmd()
-        return
-
-    # 1. Export sessions (incremental — skips already-exported)
-    subprocess.run([sys.executable, str(EXPORT_SCRIPT)], capture_output=True)
-
-    # 2. Hand the QMD refresh to a detached child and return immediately
-    flags = 0
-    if os.name == "nt":
-        flags = subprocess.CREATE_NO_WINDOW | subprocess.DETACHED_PROCESS
-
+def spawn_worker() -> None:
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    PENDING.touch()
     subprocess.Popen(
-        [sys.executable, str(Path(__file__).resolve()), "--refresh"],
+        [sys.executable, str(Path(__file__).resolve()), "--worker"],
         stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
-        creationflags=flags,
-        start_new_session=os.name != "nt",
+        start_new_session=True,
+        close_fds=True,
     )
 
 
+def main() -> int:
+    try:
+        if "--worker" in sys.argv:
+            worker()
+        else:
+            spawn_worker()
+    except Exception as error:  # never block or fail the session over recall
+        try:
+            with LOG.open("a", encoding="utf-8") as log:
+                log_line(log, f"hook error: {error!r}")
+        except OSError:
+            pass
+    return 0
+
+
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

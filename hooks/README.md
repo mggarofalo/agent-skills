@@ -4,7 +4,7 @@ Hooks that run around tool calls in Claude Code. Each hook reads a JSON payload 
 
 ## How they work
 
-Registered in `~/.claude/settings.json` under `hooks` (`PreToolUse` for the guard hooks, `SessionEnd` for the export hook). Each hook runs with a short timeout. If a `PreToolUse` hook denies a command, Claude Code receives the denial reason and adjusts its approach.
+Registered in `~/.claude/settings.json` under `hooks` (`PreToolUse` for the guard hooks; `Stop`, `SubagentStop`, `PostCompact` and `SessionEnd` for the export hook). Each hook runs with a short timeout. If a `PreToolUse` hook denies a command, Claude Code receives the denial reason and adjusts its approach.
 
 > **Note:** `bash -c` / `sh -c` wrapper scanning and the destructive-pattern checks were consolidated into `block-destructive-ops.py`. The former standalone `reject-compound-bash.py`, `prefer-dedicated-tools.py`, and `normalize-git-dash-c.py` hooks have been removed.
 
@@ -54,11 +54,19 @@ Matches `Bash`, `Read`, `Write`, and `Edit` tools.
 - `~/.claude/settings.json`, `~/.claude/settings.local.json`
 - `**/CLAUDE.md` (could rewrite safety instructions)
 
-Paths are canonicalized with `os.path.realpath()` to defeat `../` traversal and symlink evasion. Strips quoted strings and heredoc content before matching Bash commands to avoid false positives.
+Paths are canonicalized with `os.path.realpath()` to defeat `../` traversal and symlink evasion; relative paths resolve against the payload's `cwd`. Bash commands are also split into shell words, and any word that resolves to a sensitive file above is denied, so `cat ~/.ssh/id_rsa` is blocked like a `Read` would be. Most checks run per command segment, so a flag in one segment never combines with a target in another. Strips quoted strings and heredoc content before matching Bash commands to avoid false positives.
 
 ### session-end-export.py
 
-`SessionEnd` hook (not `PreToolUse`). Exports the finished session to Obsidian markdown via the `recall` skill's `export_sessions.py`, then updates the QMD index. Runs asynchronously so it doesn't block terminal exit. Failures are swallowed so a missing QMD/recall setup never blocks session end.
+Runs on `Stop`, `SubagentStop`, `PostCompact` and `SessionEnd`. The hook itself only touches a pending marker, starts a detached worker and exits 0 (about 0.05s); it never exits 2, which on `Stop` would block the agent from stopping. The worker holds a non-blocking lock and loops while the marker reappears, so bursts of events coalesce into one refresh.
+
+Each pass runs the `recall` skill's `export_sessions.py --json`, which parses only bytes appended since the last run and writes bounded chunks atomically, rewriting only chunks whose content changed. QMD `update` and `embed -c Claude-sessions` run only when something was exported. Logs go to `~/.claude/logs/session-end-export.log`.
+
+## Tests
+
+```bash
+python3 -m unittest discover -s hooks -v
+```
 
 ## Adding a new hook
 
