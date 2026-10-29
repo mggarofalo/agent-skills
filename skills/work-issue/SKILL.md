@@ -89,7 +89,7 @@ Then pick the path that matches your situation:
    ```
 4. Call it out under a **Pre-existing breakage** heading in the PR description.
 
-**Path B — the breakage does not block you** (it is in a test you are not running, a file you are not touching, or CI-only). Do not fix it. File the Plane issue as above and note it in the PR description. Leave the code alone.
+**Path B — the breakage does not block you** (it is in a test you are not running, a file you are not touching, or CI-only). Do not fix it. Record or file it according to the repo's backlog policy (default: file the Plane issue as above) and note it in the PR description. Leave the code alone.
 
 **Path C — the fix is large, risky, or needs judgment** (touches many files, changes shared behavior, or you are unsure it is correct). Stop and surface it.
 - **Interactive:** ask the user how to proceed.
@@ -109,7 +109,7 @@ Fetch the issue using the `plane` CLI (determine the project identifier from `do
 plane issue get-by-sequence-id --identifier <ISSUE-ID> --expand state,labels,assignees -o json
 ```
 
-Save the UUID from the output for later update/comment commands. Extract the title, description, acceptance criteria, labels, and priority. Summarize it in 2-3 sentences.
+Save the UUID from the output for later update/comment commands. Extract the title, description, acceptance criteria, labels, priority, and links. Read the repo's `docs/plane.md` and `CLAUDE.md`/`AGENTS.md` for issue-workflow requirements. Summarize it in 2-3 sentences.
 
 Update the issue state to **In Progress** using the `plane` CLI:
 ```bash
@@ -122,19 +122,22 @@ plane issue update -p <PROJECT> --work-item-id <UUID> --state <in-progress-state
 
 ## Step 2: Verify or create a branch
 
-Check the current branch:
+Check the current branch, worktree, and status before changing anything:
 
 ```bash
 git branch --show-current
+git status --porcelain
 ```
 
 - **Already on an issue branch** (e.g. the launcher created it via `claude -w`): skip branch creation, proceed to Step 3.
 - **On `main` or a non-issue branch** (user ran `/work-issue` directly): create the branch with the standard naming convention:
 
 ```bash
-git checkout main && git pull
+git checkout <base> && git pull --ff-only   # <base> is main unless overridden
 git checkout -b <prefix>/<issue-id-lower>-<slugified-title>
 ```
+
+Preserve any unrelated uncommitted changes the user has — never reset, discard, or absorb them into the issue. If they would block the checkout, stop and ask.
 
 Naming rules: lowercase issue ID, slugified title (non-alphanumeric → hyphens, max ~5 words).
 
@@ -168,8 +171,9 @@ Re-read `~/.claude/skills/work-issue/SKILL.md` before doing anything else. Conte
 
 ## Step 6: Commit and push
 
-1. Stage and commit with a message referencing the issue ID.
-2. Push the branch: `git push -u origin HEAD`
+1. Review `git diff` and `git status`. Stage only the files belonging to this issue (by path — never `git add -A` over unrelated user changes).
+2. Commit with a Conventional Commit message referencing the issue ID.
+3. Verify the branch, then push: `git push -u origin HEAD`
 
 **You are not done. Continue to step 7.**
 
@@ -182,8 +186,14 @@ gh pr create --title "<concise title>" --body "$(cat <<'EOF'
 
 Resolves <ISSUE-ID>
 
-## Test plan
-<How to verify the changes work>
+## Validation
+<Exact commands run and their results>
+
+## Assumptions and pre-existing breakage
+<Assumptions made; pre-existing failures confirmed on base — omit if none>
+
+## Known limitations
+<Known gaps; `## Observed, not filed` findings are added in Step 9 — omit if none>
 
 EOF
 )"
@@ -196,7 +206,7 @@ EOF
 Determine what the diff actually contains, then run the applicable analyses **in parallel** — they are independent.
 
 ```bash
-gh pr diff --name-only > "$TEMP/changed-files.txt"
+gh pr diff --name-only > "${TMPDIR:-/tmp}/changed-files.txt"
 ```
 
 **8a. Bug analysis** — always runs. Invoke `/find-bugs` on the PR you just created.
@@ -219,7 +229,7 @@ Most diffs hit none of these — say nothing and move on. If one *does* apply, n
 **8c. React render-cycle QA** — conditional, and **repo-dependent**. Run it only if *both* of these hold:
 1. The diff contains `.tsx` or `.jsx` files — check the actual paths, do not assume a directory layout:
    ```bash
-   grep -qE '\.(tsx|jsx)$' "$TEMP/changed-files.txt" && echo "react files present"
+   grep -qE '\.(tsx|jsx)$' "${TMPDIR:-/tmp}/changed-files.txt" && echo "react files present"
    ```
 2. A `react-render-qa` agent is actually available in this repo — it is defined per-repo, not globally:
    ```bash
@@ -283,13 +293,15 @@ Do not drop them and do not file them.
 > **Autonomous mode stops after Step 9.** This step is interactive-only.
 
 1. Run `gh pr checks --watch` to wait for CI.
-2. **If CI passes:** Ask the user if they're ready to merge. If yes: `gh pr merge --squash`
-3. **If CI fails:** Review with `gh pr checks` and `gh run view <run-id> --log-failed`. Fix autonomously if you can; ask the user if you're unsure. Commit, push, repeat until CI passes.
-4. After merge, update the Plane issue state to "Done" using the `plane` CLI:
+2. **If CI passes:** Ask the user if they're ready to merge (skip asking if the request already authorized merge). Merge with the repository's required merge method (`gh pr merge --squash|--merge|--rebase`) — check the ruleset/guidance; don't assume squash when release tooling (e.g. release-please on integration PRs) depends on individual commits.
+3. **If CI fails:** Review with `gh pr checks` and `gh run view <run-id> --log-failed`. Fix failures caused by the branch autonomously if you can; ask the user if you're unsure. Distinguish pre-existing or infrastructure failures with evidence (same failure on base, runner/network errors) rather than assuming. Commit, push, repeat until required checks pass or a genuine blocker remains.
+4. After merge, update the Plane issue state to "Done" using the `plane` CLI, and add a closing comment when that is the project convention:
    ```bash
    plane state list -p <PROJECT> -o json   # find the state ID for "Done"
    plane issue update -p <PROJECT> --work-item-id <UUID> --state <state-id>
    ```
+
+Don't stop at an open PR when the request and authorization include merge.
 
 **You are done.**
 

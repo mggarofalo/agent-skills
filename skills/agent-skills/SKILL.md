@@ -22,11 +22,19 @@ Manage the agent-skills repo: scaffold new content with correct templates, remov
 
 **Types:** `skill`, `hook`, `command`, `agent`, `config`
 
+### Repo layout
+
+- `skills/`, `commands/`, `agents/`, `hooks/`, `config/` — Claude Code sources, installed by `install.py`. Claude is primary.
+- `router/` — shared large-file read guard and low-cost worker (`bulk_read.py`, `code_write.py`), linked to `~/.claude/agent-router` and `~/.codex/agent-router`; has its own `test_router.py`.
+- `codex/` — parallel Codex-native layer (`codex/skills`, `codex/hooks`, `codex/agents`, `codex/config`), installed by `install-codex.py`.
+
+This skill manages the Claude layer. Apply a factual improvement to the matching `codex/` file too only when it is genuinely host-independent; don't edit the Claude copy merely to fix a Codex behavior, or vice versa.
+
 ---
 
 ## Phase 1: Validate
 
-1. Confirm the current working directory is the agent-skills repo root. Check for the presence of `install.py` and the `skills/`, `hooks/`, `commands/`, `agents/`, `config/` directories. If not found, tell the user and stop.
+1. Confirm the current working directory is the agent-skills repo root. Check for the presence of `install.py` and the `skills/`, `hooks/`, `commands/`, `agents/`, `config/`, `router/` directories. If not found, tell the user and stop.
 2. Parse the argument string into `<verb>` (`add`, `remove`, `list`), `<type>`, and `<name>`.
 3. If arguments are missing or invalid, ask using AskUserQuestion.
 4. For `add`: confirm `<name>` doesn't already exist for that type. For `remove`: confirm it does exist.
@@ -123,6 +131,8 @@ Ask the user for:
 - Which tool(s) it matches (`Bash`, `Read|Edit|Write|Glob|Grep`, etc.)
 
 Add `import re` only if regex patterns are needed. Keep the template minimal — the user fills in the detection logic.
+
+Suggest focused tests alongside it covering allow, deny, malformed-input (empty/invalid JSON on stdin), and host-path behavior (`~/.claude` vs custom worktree roots). Safety guards should fail closed when the payload can't be evaluated; see how the live `settings.json` wraps them.
 
 ### Command
 
@@ -268,16 +278,13 @@ This picks up new hooks (via glob), new config (if install.py was updated), and 
 
 ---
 
-## Phase 8: Commit
+## Phase 8: Commit (only if asked)
 
-Stage and commit all changes:
+Don't commit or push unless the user asks. When they do, stage only the files this run touched (not `git add -A`) and use:
 
 ```bash
-git add -A
 git commit -m "feat(agent-skills): <add|remove> <type> <name>"
 ```
-
-Ask the user if they want to push.
 
 ---
 

@@ -26,8 +26,8 @@ Work through the phases below in order.
 The auto-memory directory varies per project. Before doing anything else, determine it:
 
 1. Check the system prompt for a line like `You have a persistent auto memory directory at ...`. Extract that path — this is `$MEMORY_DIR`.
-2. If not found, Glob for `C:/Users/mggar/.claude/projects/*/memory/MEMORY.md` and use the directory of the first match.
-3. If still not found, fall back to `C:/Users/mggar/.claude/projects/C--Users-mggar/memory/`.
+2. If not found, derive it from the working directory: `~/.claude/projects/<cwd with every non-alphanumeric char replaced by ->/memory/` (e.g. `/Users/michael/Source/gas` → `-Users-michael-Source-gas`). Use it if it exists.
+3. If still not found, fall back to the home memory dir `~/.claude/projects/-Users-michael/memory/`.
 
 Use `$MEMORY_DIR` for all MEMORY.md and domain knowledge file references throughout.
 
@@ -57,7 +57,7 @@ This is the most important section. Be honest and specific:
 - Moments where the user's prompt was ambiguous and how Claude handled it
 - Suggestions for the user (phrased constructively, not critically) on how to get better results
 
-Keep each bullet to one concise line. No padding or filler.
+Keep each bullet to one concise line. No padding or filler. Use concrete evidence from the session; don't manufacture criticism to fill every category — an empty section is fine.
 
 ---
 
@@ -84,14 +84,14 @@ Patterns only relevant to the current repo/codebase:
 
 ### D. Domain Knowledge Gained
 Technology-specific learnings worth adding to a domain reference file:
-- Patterns, idioms, or gotchas specific to a language/framework/tool (e.g., PowerShell, Python, TypeScript, Docker)
+- Patterns, idioms, or gotchas specific to a language/framework/tool (e.g., Swift, Python, TypeScript, Docker)
 - Corrections to wrong mental models — things Claude or the user assumed that turned out to be wrong
 - Version-specific behavior differences discovered this session
 - Integration patterns between tools that aren't obvious
 
-**Domain detection**: Identify which technology domains were central to the session (e.g., "PowerShell", "React", "SQL Server"). For each domain, check if a knowledge file exists at `$MEMORY_DIR/{domain-slug}.md`.
+**Domain detection**: Identify which technology domains were central to the session (e.g., "Swift", "React", "SQL Server"). For each domain, check if a knowledge file exists at `$MEMORY_DIR/{domain-slug}.md`.
 
-Tag domain findings as `[DOMAIN:{name}]` (e.g., `[DOMAIN:powershell]`).
+Tag domain findings as `[DOMAIN:{name}]` (e.g., `[DOMAIN:swift]`).
 
 Only persist knowledge that:
 - Is non-obvious and wouldn't be in basic docs
@@ -102,6 +102,7 @@ Only persist knowledge that:
 Things Claude got wrong or had to be corrected on:
 - Wrong assumptions that should be stated explicitly in CLAUDE.md
 - Instructions that needed repeating — a sign they should be written down
+- Rules that must hold every time and can be checked mechanically — candidates for a hook rather than more prose
 
 ### F. Prompt Anti-Patterns (surfaced as tips, not written to files)
 Messages from the user that caused confusion or extra turns:
@@ -114,6 +115,7 @@ For each finding, tag it:
 - `[MEMORY]` → global auto-memory (`MEMORY.md`)
 - `[GLOBAL]` → global CLAUDE.md at `~/.claude/CLAUDE.md`
 - `[PROJECT]` → project CLAUDE.md (nearest to working directory)
+- `[HOOK]` → mechanical enforcement in the agent-skills repo's `hooks/` (propose; scaffold via `/agent-skills` after approval)
 - `[PROMPT-HINT]` → user-facing clarity tip (not written to any file)
 - `[SKIP]` → one-off, not worth persisting
 
@@ -138,7 +140,7 @@ Before drafting any updates, read the target files to avoid duplicating what's a
 
 1. Read `$MEMORY_DIR/MEMORY.md`
 2. For each `[DOMAIN:{name}]` finding: check if `$MEMORY_DIR/{name}.md` exists (Glob it). Read it if found.
-3. Check for a global CLAUDE.md: Glob for `C:/Users/mggar/.claude/CLAUDE.md`
+3. Check for a global CLAUDE.md: Glob for `~/.claude/CLAUDE.md`
 4. Check for a project CLAUDE.md: Glob for `CLAUDE.md` in the current working directory, and parent directories up to 3 levels
 
 Read each file that exists. Skip files that don't exist.
@@ -197,7 +199,7 @@ After presenting all proposals and prompt hints, use AskUserQuestion to confirm:
 - multiSelect: true
 - options: (one per proposed file, e.g.)
   - MEMORY.md — global auto-memory
-  - {domain}.md — domain knowledge file (e.g., powershell.md)
+  - {domain}.md — domain knowledge file (e.g., swift.md)
   - ~/.claude/CLAUDE.md — global guidance
   - ./CLAUDE.md — project guidance
 
@@ -208,6 +210,8 @@ If none of the above match exactly, use the actual file names from the proposals
 ---
 
 ## Phase 6: Apply Approved Changes
+
+Apply only what the user approved in Phase 5 — even if the session itself had broad editing authority. Reflection changes future behavior beyond the completed task, so it always needs its own approval.
 
 For each approved file:
 

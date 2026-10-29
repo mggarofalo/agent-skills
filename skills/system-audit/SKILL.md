@@ -32,13 +32,15 @@ Resolve these once and reference throughout:
 |----------|------------|
 | `$SKILLS_REPO` | Glob for `~/Source/agent-skills`. If not found, check `~/.claude/skills` symlink target. |
 | `$SKILLS_DIR` | `$SKILLS_REPO/skills/` |
-| `$HOOKS_DIR` | `$SKILLS_REPO/hooks/` |
+| `$HOOKS_DIR` | `$SKILLS_REPO/hooks/` (also `$SKILLS_REPO/router/` — the large-file read guard) |
 | `$COMMANDS_DIR` | `$SKILLS_REPO/commands/` |
 | `$AGENTS_DIR` | `$SKILLS_REPO/agents/` |
 | `$CONFIG_DIR` | `$SKILLS_REPO/config/` |
 | `$SETTINGS` | `~/.claude/settings.json` |
 | `$MEMORY_DIR` | From system prompt (`You have a persistent auto memory directory at ...`) or Glob `~/.claude/projects/*/memory/MEMORY.md` |
 | `$GLOBAL_CLAUDE_MD` | `~/.claude/CLAUDE.md` |
+
+If `$SKILLS_REPO` exists, verify the live symlinks (`~/.claude/skills`, `~/.claude/agent-router`, hook paths in `$SETTINGS`) point into it before judging drift. The repo also has a parallel `codex/` layer (Codex ports, installed by `install-codex.py`) — it is not part of the Claude system; don't flag Claude/Codex differences as drift.
 
 ### Arguments
 
@@ -61,6 +63,7 @@ Read every `SKILL.md` in `$SKILLS_DIR/*/SKILL.md`. For each skill, record:
 - Name, description, `user_invocable`, `allowed-tools`
 - Whether it has `references/` subdirectory
 - Line count (proxy for complexity)
+- Supporting files (`references/`, scripts) and whether `SKILL.md` actually links to each
 
 Read every command in `$COMMANDS_DIR/*.md`. Read every agent in `$AGENTS_DIR/` (both `.md` files and `*/` directories).
 
@@ -71,7 +74,7 @@ Compare every pair of skills for functional overlap. Check:
 - Do a skill and a command invoke the same agent? (redundancy)
 - Does a skill duplicate a built-in plugin's capability? (check plugin list in `$SETTINGS`)
 
-Flag pairs with >40% step overlap.
+Flag pairs with >40% step overlap. Also flag descriptions that are too broad, too long, or have poor activation boundaries (would trigger on unrelated requests, or miss the requests they're for).
 
 ### 1c. Staleness Detection
 
@@ -79,12 +82,14 @@ For each skill, check:
 - **Hardcoded paths**: Grep for absolute paths or project-specific references (e.g., `Receipts.slnx`, specific directory names). These make skills non-portable.
 - **Outdated tool references**: Does the skill reference tools or commands that no longer exist?
 - **Version-pinned assumptions**: Does the skill assume a specific version of a tool?
+- **Unreachable references**: files under `references/` that `SKILL.md` never points to.
+- **Scripts**: untested, non-portable (Windows-only paths, `start`, hardcoded home dirs), or no longer called by the skill.
 
 ### 1d. Usage Signal (if session data available)
 
 Check `~/.claude/projects/*/` for session data. If conversation logs exist, grep for skill invocation patterns (`/skill-name`, `Skill tool` calls). Flag skills with zero invocations across all sessions.
 
-If no session data is available, skip this step and note it.
+If no session data is available, skip this step and note it. Don't treat zero invocations as proof of disuse unless the history is complete enough to support the claim (sessions get pruned; skills also activate without a visible `/name`).
 
 ### Output
 
@@ -102,7 +107,7 @@ For each finding, tag it:
 
 Read every `.py` file in `$HOOKS_DIR/`. For each hook, record:
 - Name, what it blocks, which tools it matches
-- Whether it's registered in `$SETTINGS` (check `hooks.PreToolUse`)
+- Whether it's registered in `$SETTINGS` (check every `hooks.*` event, not just `PreToolUse`)
 
 ### 2b. Redundancy Check
 
@@ -117,6 +122,12 @@ For each hook, assess:
 - Does the denial message give Claude actionable guidance? (Good hooks say "do X instead", not just "blocked")
 - Is the matching pattern too broad? (blocking legitimate commands)
 - Is the matching pattern too narrow? (missing variants it should catch)
+- Does the matcher agree with the implementation (neither broader nor narrower)?
+- Does the script consume the documented input shape for its event, and emit valid denial output / exit codes?
+- Is the configured `timeout` supported for that event?
+- Does worktree logic recognize custom worktree roots, not just `.worktrees/`?
+
+Treat hooks as guardrails, not security boundaries. Flag guards that only match `Read`/`Glob`/`Grep` when the same work can go through `Bash` (e.g. `cat`, `rg`, `sed -n`).
 
 ### Output
 
@@ -209,6 +220,8 @@ For each plugin:
 For each MCP:
 - Is it actively used? (Check for tool calls in session data if available)
 - Does it require authentication that may have expired?
+
+Classify each plugin/MCP as: **configured & usable**, **awaiting auth**, **installed but disabled**, **stale or duplicated**, or **genuinely missing**. Never recommend removing an integration on speculation — only with evidence.
 
 ### 5c. Missing Integrations
 
@@ -305,6 +318,8 @@ Rank findings by impact:
 1. **High** — Wastes significant tokens every session, causes errors, or blocks workflows
 2. **Medium** — Adds friction or confusion, fixable with moderate effort
 3. **Low** — Nice-to-have cleanup, no urgency
+
+For each fix, say whether applying it requires re-trusting a hook or restarting Claude Code. When an item looks unused but no evidence supports removal, say so explicitly rather than recommending removal.
 
 ---
 

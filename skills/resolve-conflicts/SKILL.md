@@ -41,9 +41,9 @@ gh pr view <PR> --json number,title,body,headRefName,baseRefName,state,commits
 
 ## Step 2: Read reference issues
 
-Extract Plane issue IDs from the PR title, body, and branch name (pattern: `RECEIPTS-\d+`).
+Extract Plane issue IDs from the PR title, body, and branch name (pattern: `<PROJECT>-\d+`, where the project identifier comes from `docs/plane.md` or the repo's guidance files).
 
-For each issue ID found, fetch the issue using the `plane` CLI (determine the project from the issue ID prefix or from `docs/plane.md`):
+For each issue ID found, fetch the issue using the `plane` CLI:
 ```bash
 plane issue get-by-sequence-id --identifier <ID> --expand state,labels,assignees -o json
 ```
@@ -52,6 +52,8 @@ If the CLI is unavailable or fails, fall back to checking `docs/issues/` for arc
 Also extract context from the PR's commit messages (already fetched in Step 1).
 
 This context is **critical** for resolving semantic conflicts in Step 6 — it tells you the *intent* behind the PR's changes.
+
+Also read the repo's applicable `CLAUDE.md` / `AGENTS.md`, package manifests, and existing scripts (build, generate, lint, test). These — not assumptions — determine which files are generated, which package manager owns each lock file, and which validation commands exist in Step 8.
 
 ## Step 3: Prepare workspace
 
@@ -70,8 +72,14 @@ This context is **critical** for resolving semantic conflicts in Step 6 — it t
    ```bash
    git checkout <head-branch>
    ```
+   If git refuses because the branch is checked out in another worktree (`git worktree list` shows it), work in that worktree or ask the user how to proceed (autonomous: stop and report). Never detach or remove another worktree.
 
-4. Check if rebase is needed:
+4. Record the pre-rebase tip for the Step 8 range-diff:
+   ```bash
+   git rev-parse HEAD
+   ```
+
+5. Check if rebase is needed:
    ```bash
    git merge-base --is-ancestor origin/<base-branch> <head-branch>
    ```
@@ -93,14 +101,14 @@ List conflicted files:
 git diff --name-only --diff-filter=U
 ```
 
-For each conflicted file, assign a category based on path and type:
+For each conflicted file, assign a category using repository evidence (manifests, generator config, `.gitattributes`, guidance files) — not a fixed path list:
 
-| Category | Patterns | Strategy |
-|----------|----------|----------|
-| **generated** | `*.g.cs`, `openapi/generated/*`, `src/client/src/generated/*`, `API.json` | Accept base version, regenerate after all conflicts resolved |
-| **openapi-spec** | `openapi/spec.yaml` | Accept-both (additive merge — both sides add endpoints/schemas) |
-| **lock-file** | `package-lock.json` | Accept base version + `npm install` after resolution |
-| **binary** | Non-text files (images, etc.) | Escalate (interactive) / accept ours (autonomous) |
+| Category | How to recognize | Strategy |
+|----------|------------------|----------|
+| **generated** | Output of a generator the repo runs (codegen, OpenAPI output, compiled assets) | Accept base version, regenerate from source inputs after all conflicts resolved |
+| **lock-file** | `package-lock.json`, `bun.lock`, `Cargo.lock`, `go.sum`, `packages.lock.json`, etc. | Resolve the manifest first, then regenerate with the repo's package manager |
+| **additive structured** | YAML/JSON/XML where both sides add entries (API specs, config lists) | Accept both additions, then validate the format |
+| **binary** | Non-text files (images, etc.) | Requires user direction unless one side is clearly generated |
 | **non-overlapping** | Different hunks in same file (no overlapping line ranges) | Accept both sides — merge manually |
 | **semantic** | Same lines changed by both sides | Analyze intent from issue context + PR description + commits |
 
@@ -112,7 +120,7 @@ Files with `-` for added/removed lines are binary.
 
 ## Step 6: Resolve per category
 
-Work **least-ambiguous first**: generated → lock-file → openapi-spec → non-overlapping → binary → semantic.
+Work **least-ambiguous first**: generated → lock-file → additive structured → non-overlapping → binary → semantic.
 
 ### Generated files
 ```bash
@@ -121,19 +129,19 @@ git add <file>
 ```
 Do NOT manually merge — these will be regenerated in the post-resolution step.
 
-### Lock files (`package-lock.json`)
+### Lock files
+Resolve any conflicted manifest (`package.json`, `Cargo.toml`, `*.csproj`, …) first. Then take the base lock file and let the repo's package manager reconcile it against the resolved manifest in the post-resolution step:
 ```bash
-git checkout origin/<base-branch> -- package-lock.json
-git add package-lock.json
+git checkout origin/<base-branch> -- <lock-file>
+git add <lock-file>
 ```
-Will run `npm install` in the post-resolution step to reconcile with the head branch's `package.json`.
 
-### OpenAPI spec (`openapi/spec.yaml`)
-Read the conflict markers. Both sides typically add new paths/schemas. Accept both additions:
+### Additive structured files
+Both sides typically add new entries. Accept both additions:
 1. Read the file with conflict markers.
 2. Edit to include both sides' additions (remove markers, keep all new content).
-3. Verify YAML validity.
-4. `git add openapi/spec.yaml`
+3. Verify the format parses (YAML/JSON/XML).
+4. `git add <file>`
 
 ### Non-overlapping conflicts
 The conflict markers show changes to different parts of the file. Include both sets of changes:
@@ -142,12 +150,9 @@ The conflict markers show changes to different parts of the file. Include both s
 3. `git add <file>`
 
 ### Binary files
+If one side is clearly generated, regenerate it like any generated file. Otherwise:
 - **Interactive:** Ask the user which version to keep.
-- **Autonomous:** Accept ours (the head branch version):
-  ```bash
-  git checkout --ours <file>
-  git add <file>
-  ```
+- **Autonomous:** Do not guess. Stop with the rebase state intact and report the file as needing user direction.
 
 ### Semantic conflicts
 These are the hardest — the same lines were modified by both sides for different reasons.
@@ -167,30 +172,13 @@ These are the hardest — the same lines were modified by both sides for differe
 
 After all conflicts in this commit are resolved:
 
-1. **Regenerate .NET generated code:**
+1. Run the repo's generators (as discovered in Step 2) for any generated category touched.
+2. Reconcile lock files with the repo's package manager (`npm install`, `bun install`, `cargo update -w`, `dotnet restore`, …) in each directory whose manifest changed.
+3. Stage only the regenerated and resolved paths — never `git add -A`.
+4. Verify no conflict markers remain:
    ```bash
-   dotnet build Receipts.slnx
+   git diff --cached --check
    ```
-   This regenerates `openapi/generated/API.json` and `*.g.cs` files.
-
-2. **Regenerate TypeScript types (if client files were involved):**
-   ```bash
-   npx openapi-typescript openapi/generated/API.json -o src/client/src/generated/api.ts
-   ```
-
-3. **Reconcile lock files (if package.json changed):**
-   ```bash
-   npm install
-   cd src/client
-   npm install
-   cd -
-   ```
-
-4. Stage any regenerated files:
-   ```bash
-   git add openapi/generated/ src/client/src/generated/ src/Presentation/API/Generated/
-   ```
-   Also stage `package-lock.json` and `src/client/package-lock.json` if they changed.
 
 ## Step 7: Continue rebase
 
@@ -199,49 +187,26 @@ git rebase --continue
 ```
 
 - If more commits conflict, **loop back to Step 5** for the new set of conflicts.
-- If a commit becomes empty after resolution:
-  ```bash
-  git rebase --skip
-  ```
+- Use `git rebase --skip` **only** when the commit is genuinely empty after resolution (its change already exists on base) — never to bypass a difficult conflict.
 - Repeat until the rebase completes.
 
 ## Step 8: Validate
 
-Run the project's validation pipeline (mirrors pre-commit hooks):
+Run the repo's documented formatting, generation, build, type-check, lint, and test commands (from `CLAUDE.md` / `AGENTS.md`, manifests, scripts, or pre-commit config) **in proportion to the diff**. Don't invent commands the repo doesn't have.
 
+Then confirm the rebase didn't silently drop intent by comparing against the pre-rebase tip recorded in Step 3:
 ```bash
-dotnet format Receipts.slnx --verify-no-changes
+git range-diff origin/<base-branch> <pre-rebase-sha> HEAD
 ```
-If formatting fails, fix automatically:
-```bash
-dotnet format Receipts.slnx
-```
-Then re-check.
+Each PR commit should still carry its original change, adjusted only for the base.
 
-```bash
-Jwt__Key=build-time-spec-extraction-only-not-for-runtime dotnet build Receipts.slnx -p:TreatWarningsAsErrors=true --no-restore
-```
-
-```bash
-dotnet test Receipts.slnx --no-build --verbosity normal
-```
-
-```bash
-npx tsc --noEmit --project src/client/tsconfig.json
-```
-
-```bash
-npx eslint src/client/src
-```
-
-**If validation fails:**
+**If validation fails because of the resolution:**
 - **Interactive:** Enter plan mode to diagnose and fix.
-- **Autonomous:** Attempt to fix automatically (up to 2 retries). If still failing after retries, abort the rebase cleanly and report:
-  ```bash
-  git rebase --abort
-  ```
+- **Autonomous:** Attempt to fix automatically (up to 2 retries).
 
-If you made fixes during validation, amend them into the appropriate commit or add a fixup commit.
+Keep the correction with the appropriate rebased commit when practical (amend or fixup commit).
+
+**If the failure is pre-existing on base, or resolution intent remains ambiguous:** stop. Either leave the rebase state intact or abort cleanly (`git rebase --abort`) — whichever preserves the clearest recovery path — and report exactly what remains.
 
 ## Step 9: Push
 
@@ -250,7 +215,7 @@ If you made fixes during validation, amend them into the appropriate commit or a
    ```bash
    git branch --show-current
    ```
-   Must match the head branch from Step 1.
+   Must match the head branch from Step 1. Then `git fetch origin` again so the lease checks against the latest remote state.
 2. Ask the user for authorization to force-push.
 3. Push:
    ```bash
@@ -258,7 +223,7 @@ If you made fixes during validation, amend them into the appropriate commit or a
    ```
 
 **Autonomous:**
-1. Verify the branch matches.
+1. Verify the branch matches, then `git fetch origin` again.
 2. Check if the invoking prompt contains "force-push approved".
    - If yes: push with `--force-with-lease`.
    - If no: **stop** with local-only resolution. Report that the rebase is complete locally but not pushed.
@@ -279,11 +244,8 @@ Output a summary table:
 | ... | ... | ... | ... |
 
 ### Validation
-- Format: pass/fail
-- Build: pass/fail
-- Tests: pass/fail
-- TypeScript: pass/fail
-- ESLint: pass/fail
+- <exact command>: pass/fail (one line per command actually run)
+- Range-diff vs pre-rebase: intent preserved / <what changed>
 
 ### Push
 - Status: pushed / local-only / rejected
@@ -292,6 +254,9 @@ Output a summary table:
 
 ### Assumptions (autonomous mode only)
 - ...
+
+### Remaining manual follow-up
+- ... (or "none")
 ```
 
 **You are done.**
@@ -303,12 +268,10 @@ Output a summary table:
 - **Always `--force-with-lease`**, never bare `--force`.
 - **Verify the branch** before every push — `git branch --show-current` must match the PR's head branch.
 - **No compound Bash commands** — no `&&`, `||`, `;` in a single Bash call (hook constraint). Use separate sequential calls.
-- **Regenerate, don't merge** generated files (`*.g.cs`, `API.json`, generated TypeScript types).
+- **Regenerate, don't merge** generated files — identify them from the repo's generators, not a fixed path list.
+- **No project-specific hardcoding** — solution names, generated paths, and validation commands come from the repo's guidance files, manifests, and scripts.
 - **Preserve PR intent** for semantic conflicts — the PR is active work; the base is merged context.
-- **Abort cleanly** on unrecoverable failure:
-  ```bash
-  git rebase --abort
-  ```
+- **Stop or abort cleanly** on unrecoverable failure — leave the rebase state intact or `git rebase --abort`, whichever preserves the clearest recovery path.
 - **Never stash or discard** uncommitted changes — stop and report if the tree is dirty.
 
 ## When to Use
@@ -329,12 +292,13 @@ Output a summary table:
 - **Multiple conflicting commits** — Step 7 loops back to Step 5 for each
 - **Validation fails after resolution** — retry mechanism (autonomous) or plan mode (interactive)
 - **PR already up to date** — Step 3 short-circuits with a report
-- **Binary conflicts** — escalate (interactive) or accept ours (autonomous)
-- **Empty commits after rebase** — `git rebase --skip`
+- **Binary conflicts** — regenerate if clearly generated; otherwise ask (interactive) or stop and report (autonomous)
+- **Empty commits after rebase** — `git rebase --skip`, only when genuinely empty
+- **Head branch checked out in another worktree** — use that worktree or ask; never detach or remove it
 - **Concurrent push by someone else** — `--force-with-lease` rejects safely
 - **Dirty working tree** — Step 3 stops early
 - **Generated file conflicts** — accept base, regenerate after resolution
-- **Lock file conflicts** — accept base, `npm install` after resolution
+- **Lock file conflicts** — resolve manifest, accept base lock, regenerate with the repo's package manager
 
 ## Orchestration (Parallel / Subagent Execution)
 
@@ -359,7 +323,7 @@ The project's `.claude/settings.local.json` must auto-allow:
 
 - `Edit` and `Write` — for resolving conflicts in source files
 - `Bash(git push:*)` — for force-pushing the rebased branch
-- `Bash(npm install:*)` — for reconciling lock files
+- The repo's package-manager install command (e.g. `Bash(npm install:*)`) — for reconciling lock files
 
 ### Constraints
 

@@ -1,6 +1,6 @@
 ---
 name: recall
-description: Search and visualize past Claude Code session history. Three modes — temporal (browse by date), topic (semantic search), graph (visual map).
+description: Search and visualize past Claude Code and Codex session history. Three modes — temporal (browse by date), topic (semantic search), graph (visual map).
 allowed-tools: Read, Glob, Grep, Bash, Write, WebFetch
 user-invocable: true
 argument-hint: "<mode> [query]  — modes: temporal, topic, graph"
@@ -8,7 +8,12 @@ argument-hint: "<mode> [query]  — modes: temporal, topic, graph"
 
 # Session Recall
 
-You help the user search and explore their past Claude Code session history. Sessions have been exported to markdown files at `~/.claude/obsidian/sessions/` with YAML frontmatter containing metadata.
+You help the user search and explore their past agent session history. Sessions are exported to markdown with YAML frontmatter:
+
+- **Claude Code**: `~/.claude/obsidian/sessions/` (QMD collection `Claude-sessions`), ~64K-char chunks: `YYYY-MM-DD_<id8>.md`, then `YYYY-MM-DD_<id8>_part-NNN.md` — group chunks by `session_id`
+- **Codex**: `~/.agent-history/codex-sessions/` (QMD collection `Codex-sessions`), bounded chunks named `YYYY-MM-DD_codex_<session-id>_chunk-NNNNN.md` with `agent: "codex"` — group chunks by `session_id`
+
+Always say which harness (Claude / Codex) each result came from.
 
 Parse the user's `/recall` invocation to determine the mode and query, then execute accordingly.
 
@@ -28,9 +33,10 @@ Browse sessions by date. The query is a natural language time reference.
    - "March 5" or "2026-03-05" → specific date
    - "March 1-7" → explicit range
 
-2. **Glob session files** matching the date prefix pattern:
+2. **Glob session files** matching the date prefix pattern in both export dirs:
    ```
    ~/.claude/obsidian/sessions/YYYY-MM-DD_*.md
+   ~/.agent-history/codex-sessions/YYYY-MM-DD_*.md
    ```
    For ranges, glob each date or use a broader pattern and filter.
 
@@ -40,9 +46,11 @@ Browse sessions by date. The query is a natural language time reference.
 
 5. **Present results as a table**:
 
-   | Date | Project | Branch | Summary |
-   |------|---------|--------|---------|
-   | 2026-03-05 | Receipts | feat/auth | Implement authentication flow... |
+   | Date | Agent | Project | Branch | Summary |
+   |------|-------|---------|--------|---------|
+   | 2026-03-05 | Claude | Receipts | feat/auth | Implement authentication flow... |
+
+   Missing metadata (e.g. Codex chunks often have an empty `git_branch` and no `files_touched`) is fine — leave the cell blank; never invent it.
 
    If many sessions, group by date with counts.
 
@@ -64,7 +72,7 @@ Semantic search across session content. Requires QMD MCP server.
 
 2. **If QMD is available**: call `mcp__qmd__query`. It takes typed sub-queries, not a plain query string:
    - `searches`: an array of `{type, query}` objects. `lex` is BM25 keyword matching (supports `"quoted phrases"` and `-negation`), `vec` is semantic, `hyde` is a hypothetical answer passage. The **first sub-query carries 2× weight**, so lead with your strongest signal.
-   - `collections`: `["claude-sessions"]` — note the plural; it is an array.
+   - `collections`: `["Claude-sessions", "Codex-sessions"]` by default — note the plural; it is an array, and names are case-sensitive. Narrow to one only when the user asks about a single harness.
    - `intent`: one line of context disambiguating the search. Always pass this.
    - `limit` / `minScore`: optional. `minScore: 0.5` filters weak hits.
 
@@ -75,32 +83,33 @@ Semantic search across session content. Requires QMD MCP server.
        {"type": "lex", "query": "\"connection pool\" timeout -redis"},
        {"type": "vec", "query": "why do database connections time out under load"}
      ],
-     "collections": ["claude-sessions"],
+     "collections": ["Claude-sessions", "Codex-sessions"],
      "intent": "debugging DB connection exhaustion in the Receipts API"
    }
    ```
 
    Each result carries a `line` field pointing at the best match. To read context around a hit, call `mcp__qmd__get` with `fromLine` set to roughly 20 lines before it.
 
-   **Caveat on transcript search:** sessions embed the full text of any skill they invoked, so a query naming a skill will rank that skill's own boilerplate above real usage. When searching for how something *behaved*, search for the symptom (an error string, a workaround, a decision) rather than the tool's name.
+   **Caveat on transcript search:** sessions embed the full text of any skill they invoked (and Codex sessions embed `AGENTS.md`), so a query naming a skill will rank that boilerplate above real usage. Search for errors, decisions, filenames, and domain terms rather than skill or tool names.
 
    Present results with:
+   - Harness (Claude / Codex, from the collection or `agent` field)
    - Session date and project
    - Relevance score
    - Key excerpt (the matched passage)
    - File path for the user to reference
 
-3. **If QMD is NOT available**: Fall back to Grep-based search:
-   - `Grep` for the query terms across `~/.claude/obsidian/sessions/*.md`
+3. **If QMD MCP is NOT available**: if the `qmd` CLI is installed, use `qmd query "<query>" -c Claude-sessions -c Codex-sessions`. Otherwise fall back to Grep-based search:
+   - `Grep` for the query terms across `~/.claude/obsidian/sessions/*.md` and `~/.agent-history/codex-sessions/*.md`
    - Read frontmatter from matching files for metadata
    - Present results sorted by match count (most relevant first)
 
 4. **Present as a ranked list**:
    ```
-   1. **Receipts** (2026-03-05) — branch: feat/auth
+   1. **Receipts** (2026-03-05, Claude) — branch: feat/auth
       > "...implementing the authentication middleware with JWT tokens..."
 
-   2. **ReceiptSync** (2026-03-02) — branch: main
+   2. **ReceiptSync** (2026-03-02, Codex) — branch: main
       > "...auth token refresh logic in the sync service..."
    ```
 
@@ -119,8 +128,8 @@ Generate an interactive force-directed graph visualization of sessions and the f
    - `/recall graph <project>` → filter to that project
    - `/recall graph last month` → filter by time range
 
-2. **Scan session frontmatter** from `~/.claude/obsidian/sessions/*.md`:
-   - For each session, extract: `session_id`, `date`, `project`, `git_branch`, `slug`, `files_touched`
+2. **Scan session frontmatter** from `~/.claude/obsidian/sessions/*.md` (Codex exports carry no `files_touched`, so they add no file edges):
+   - For each session, extract: `session_id`, `date`, `project`, `git_branch`, `slug`, `files_touched` (any may be missing or empty — skip, don't invent)
    - Apply any project/time filters
 
 3. **Build graph data**:
@@ -153,7 +162,7 @@ Generate an interactive force-directed graph visualization of sessions and the f
            links.append({"source": session_node_id, "target": file_id})
    ```
 
-4. **Read the graph template** from `~/Source/agent-skills/skills/recall/references/graph-template.html`.
+4. **Read the graph template** from `~/.claude/skills/recall/references/graph-template.html`.
 
 5. **Inject data** by replacing the `/* DATA_PLACEHOLDER */` marker:
    ```
@@ -168,7 +177,7 @@ Generate an interactive force-directed graph visualization of sessions and the f
 
 7. **Open in browser**:
    ```bash
-   start ~/.claude/obsidian/graph.html    # Windows
+   open ~/.claude/obsidian/graph.html    # macOS; xdg-open on Linux
    ```
 
 8. **Report to user**: "Graph opened in browser with X sessions and Y files. Use the project and time filters in the top-left to explore."
@@ -179,7 +188,7 @@ Generate an interactive force-directed graph visualization of sessions and the f
 
 If the user just says `/recall` without a mode, briefly describe the three modes and ask which they want:
 
-> **Recall — search your Claude Code session history**
+> **Recall — search your Claude Code and Codex session history**
 >
 > - `/recall temporal last week` — browse sessions by date
 > - `/recall topic authentication` — semantic search across sessions
@@ -194,16 +203,18 @@ If the user just says `/recall` without a mode, briefly describe the three modes
 - **Export script**: Sessions must be exported first. If `~/.claude/obsidian/sessions/` is empty or doesn't exist, tell the user:
   > "No exported sessions found. Run the export first:
   > ```bash
-  > python ~/Source/agent-skills/skills/recall/export_sessions.py -v
+  > python3 ~/.claude/skills/recall/export_sessions.py -v
   > ```"
 
-- **QMD** (topic mode only): If QMD tools aren't available, fall back to Grep. Mention that QMD enables better semantic search — see `~/Source/agent-skills/skills/recall/references/SETUP.md`.
+  Codex exports under `~/.agent-history/codex-sessions/` are refreshed by the Codex-side exporter (`codex/skills/recall/scripts/export_sessions.py` in the agent-skills repo), not by this script.
+
+- **QMD** (topic mode only): If QMD tools aren't available, fall back to the `qmd` CLI, then Grep. Mention that QMD enables better semantic search — see `~/.claude/skills/recall/references/SETUP.md`.
 
 ---
 
 ## YAML Frontmatter Reference
 
-Each exported session markdown file has this frontmatter:
+Each exported Claude chunk has this frontmatter, plus `chunk_index`, `message_start` and `message_count`. `start_time`/`end_time` and `files_touched` cover only that chunk; union them across a session's chunks (Codex chunks add `agent`, `cwd`, lineage IDs, and chunk ranges, and omit `slug`/`files_touched`). Any field may be empty when the source lacked it:
 
 ```yaml
 ---

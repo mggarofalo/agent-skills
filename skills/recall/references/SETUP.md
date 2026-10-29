@@ -5,7 +5,7 @@
 Run the export script to convert JSONL session files to searchable markdown:
 
 ```bash
-python ~/Source/agent-skills/skills/recall/export_sessions.py -v
+python3 ~/.claude/skills/recall/export_sessions.py -v
 ```
 
 This creates markdown files in `~/.claude/obsidian/sessions/`, one per session.
@@ -22,8 +22,10 @@ npm install -g @tobilu/qmd
 ## 3. Create QMD Collection
 
 ```bash
-qmd collection add ~/.claude/obsidian/sessions --name claude-sessions
+qmd collection add ~/.claude/obsidian/sessions --name Claude-sessions
 ```
+
+Codex exports (`~/.agent-history/codex-sessions`) live in a separate `Codex-sessions` collection, created by the Codex-side recall setup. Topic mode searches both. Confirm with `qmd collection list`.
 
 ## 4. Build Embeddings
 
@@ -35,31 +37,24 @@ This generates vector embeddings for semantic search. Re-run after each export t
 
 ## 5. Configure MCP Server
 
-Add QMD as an MCP server in `~/.claude/settings.json`:
+Register QMD as a user-scope MCP server (stored in `~/.claude.json`, not `settings.json`):
 
-```json
-{
-  "mcpServers": {
-    "qmd": {
-      "command": "qmd",
-      "args": ["mcp"]
-    }
-  }
-}
+```bash
+claude mcp add --scope user qmd -- qmd mcp
 ```
 
 ## 6. Verify
 
-Restart Claude Code and confirm QMD tools are available:
-- `qmd_search` — BM25 keyword search
-- `qmd_vector_search` — semantic search
-- `qmd_deep_search` — hybrid (BM25 + semantic + rerank)
+Restart Claude Code and confirm QMD tools are available (they may be deferred — load with ToolSearch):
+- `mcp__qmd__query` — typed `lex` / `vec` / `hyde` sub-queries across collections
+- `mcp__qmd__get` / `mcp__qmd__multi_get` — read documents around a hit
+- `mcp__qmd__status` — index health
 
 ## Maintenance
 
 After new sessions accumulate, re-export and re-embed:
 
 ```bash
-python ~/Source/agent-skills/skills/recall/export_sessions.py -v
+python3 ~/.claude/skills/recall/export_sessions.py -v
 qmd embed
 ```

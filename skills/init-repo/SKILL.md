@@ -27,12 +27,20 @@ These conventions apply to ALL repos regardless of language:
 - **Branch protection:** a ruleset named `main protection` targeting `~DEFAULT_BRANCH` (see Step 9)
 - **Commit style:** [Conventional Commits](https://www.conventionalcommits.org/)
 - **Branch strategy:** Two-tier (milestone branches → issue branches, squash-merge, worktrees)
-- **Plane workspace:** mggarofalo
+- **Plane workspace:** discover from the `plane` CLI config or existing docs — don't hardcode it
 - **Agent guidance:** AGENTS.md (primary), CLAUDE.md (redirect to AGENTS.md)
 
 ## Execution Steps
 
-### Step 1: Gather inputs
+### Step 1: Preflight and gather inputs
+
+Build a usable repo, not a frozen copy of an old template. Before writing anything:
+
+1. Check whether the target directory and git repo already exist.
+2. Read any existing README, guidance files, package manifests, CI, `.editorconfig`, and `.gitattributes`. Preserve every existing file unless the user explicitly authorizes replacement.
+3. Verify `gh auth status` before creating or mutating a remote.
+4. Determine current supported runtime and GitHub Action versions from official sources (WebSearch the action's README / release page), installed tooling, or manifests. Do not copy versions from this skill.
+5. Detect the stack's package manager, solution/project name, test runner, simulator, and generated files from the repo — don't assume every project matches another. Ask one focused question only when the answer can't be inferred.
 
 If the user didn't provide all required inputs, ask using AskUserQuestion. For language, offer common options:
 
@@ -49,14 +57,14 @@ If the user didn't provide all required inputs, ask using AskUserQuestion. For l
 gh repo create mggarofalo/<repo-name> --<visibility> --description "<description>" --clone
 ```
 
-If the directory already exists with a git repo, add the remote instead:
+If the directory already exists with a git repo, add the remote instead (never reinitialize existing history; the push happens in Step 8 after validation):
 ```bash
-gh repo create mggarofalo/<repo-name> --<visibility> --description "<description>" --source=. --remote=origin --push
+gh repo create mggarofalo/<repo-name> --<visibility> --description "<description>" --source=. --remote=origin
 ```
 
 ### Step 3: Generate config files
 
-Create all config files based on the language. Use the templates below.
+Create only the config files the stack needs. The templates below are shape examples — adapt them to the detected stack.
 
 #### .gitignore
 
@@ -150,7 +158,7 @@ trim_trailing_whitespace = false
 indent_style = tab
 ```
 
-**.NET/C#:** Use the Receipts project's .editorconfig as a starting point (comprehensive C# code style). Read it from `C:\Users\mggar\Source\Receipts\.editorconfig` and adapt.
+**.NET/C#:** Use the Receipts project's .editorconfig as a starting point (comprehensive C# code style). Read it from `~/Source/Receipts/.editorconfig` if present (otherwise `dotnet new editorconfig`) and adapt.
 
 **React/TypeScript / Node.js:**
 ```ini
@@ -192,7 +200,9 @@ indent_style = tab
 
 ### Step 4: Generate GitHub Actions CI
 
-Create `.github/workflows/ci.yml` tailored to the language.
+Create `.github/workflows/ci.yml` tailored to the language, using the repo's real build, lint, type-check, and test commands and reproducible installs.
+
+These templates show **shape only**. Replace every `<current…>` placeholder with what Step 1 found (latest supported action major, current runtime LTS, an installed simulator from `xcrun simctl list devices available`). Give jobs stable human-readable `name:` fields — the branch ruleset refers to them.
 
 **Swift/iOS:**
 ```yaml
@@ -209,11 +219,11 @@ jobs:
     name: Build & Test
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@<current-major>
       - name: Build
-        run: xcodebuild build -scheme <repo-name> -destination 'platform=iOS Simulator,name=iPhone 16 Pro' -quiet
+        run: xcodebuild build -scheme <repo-name> -destination 'platform=iOS Simulator,name=<installed-simulator>' -quiet
       - name: Test
-        run: xcodebuild test -scheme <repo-name> -destination 'platform=iOS Simulator,name=iPhone 16 Pro' -quiet
+        run: xcodebuild test -scheme <repo-name> -destination 'platform=iOS Simulator,name=<installed-simulator>' -quiet
 ```
 
 **.NET/C#:**
@@ -235,11 +245,11 @@ jobs:
     name: Build & Test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@<current-major>
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@<current-major>
         with:
-          dotnet-version: "10.0.x"
+          dotnet-version: "<current-lts>.x"
       - name: Restore
         run: dotnet restore
       - name: Build
@@ -251,11 +261,11 @@ jobs:
     name: Code Formatting
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@<current-major>
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@<current-major>
         with:
-          dotnet-version: "10.0.x"
+          dotnet-version: "<current-lts>.x"
       - name: Restore
         run: dotnet restore
       - name: Check formatting
@@ -277,11 +287,11 @@ jobs:
     name: Build & Test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@<current-major>
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@<current-major>
         with:
-          node-version: 22
+          node-version: <current-lts>
           cache: npm
       - name: Install dependencies
         run: npm ci
@@ -310,11 +320,11 @@ jobs:
     name: Build & Test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@<current-major>
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@<current-major>
         with:
-          python-version: "3.12"
+          python-version: "<current-supported>"
           cache: pip
       - name: Install dependencies
         run: pip install -r requirements.txt
@@ -332,14 +342,14 @@ Create `AGENTS.md` with these sections (adapt content to the language):
 
 1. **Header** — "This file provides guidance to AI agents working with code in this repository."
 2. **Prerequisites** — language runtime, build tools, versions
-3. **Development Workflow** — Plane issue management + two-tier branch strategy (copy the branch strategy section verbatim from the Receipts AGENTS.md at `C:\Users\mggar\Source\Receipts\AGENTS.md` lines 20-113, adapting only the project-specific parts like solution names and project paths)
+3. **Development Workflow** — Plane issue management + two-tier branch strategy (use the "Workflow Rules" section of `~/Source/Receipts/AGENTS.md` as the reference, adapting only project-specific parts like solution names and project paths)
 4. **Build and Test Commands** — language-specific build/test/run commands
 5. **Pre-commit Hooks** — if applicable (lint, format, build, test)
 6. **Architecture** — project structure and key patterns
 7. **Coding Standards** — language-specific conventions
 8. **Commit Message Convention** — Conventional Commits (same as Receipts)
 
-Key: The branch strategy, Plane workflow, worktree usage, and commit convention sections should be nearly identical across all projects. Only build commands, architecture, and coding standards change per language.
+Key: The branch strategy, Plane workflow, worktree usage, and commit convention sections should be nearly identical across all projects. Only build commands, architecture, and coding standards change per language. Keep it concise and repo-specific; commands must be exact and match CI. Don't create empty placeholder sections.
 
 ### Step 6: Generate docs/plane.md
 
@@ -382,6 +392,8 @@ See [AGENTS.md](AGENTS.md) for all development guidance.
 ```
 
 ### Step 8: Initial commit and push
+
+Before the first push: review the full diff, validate workflow YAML (e.g. `actionlint` if installed, otherwise parse it), and run the local equivalents of every CI command so the first CI run isn't the first test.
 
 ```bash
 git add .gitignore .gitattributes .editorconfig .github/ AGENTS.md docs/plane.md CLAUDE.md
@@ -450,7 +462,7 @@ JSON
 
 #### Status check contexts
 
-The `context` string must match the job's `name:` field in the workflow **exactly** — not the job key. From the Step 4 CI templates:
+The `context` string must match the job's `name:` field in the workflow **exactly** — not the job key. Read it from the workflow you actually wrote; never guess a status-check context — a nonexistent required check blocks every merge. From the Step 4 CI templates:
 
 | Language | Contexts |
 |---|---|
@@ -503,6 +515,6 @@ Report what was created:
 - Do NOT overwrite existing files without asking
 - If the repo already has commits, work incrementally (don't `git init` over existing history)
 - Always verify `gh auth status` before creating repos
-- The branch strategy section in AGENTS.md is project-agnostic — copy it from Receipts and only change project-specific references (solution name, project paths)
+- Never weaken branch protection to make a push succeed
 - **`non_fast_forward` has no API bypass.** Once the ruleset is active, a force-push to `main` — including resetting after a bad merge — requires manually unchecking "Block force pushes" in **Settings → Rules → Rulesets**, then re-enabling it. Tell the user this rather than trying to work around it, and remind them to turn it back on.
 - **Merge method matters for release-please.** Squash-merging a `develop`-style integration PR collapses its `feat`/`fix` commits into one `chore:` commit, and release-please then skips the release entirely. For integration PRs, use a merge commit; squash is fine for ordinary feature PRs.
