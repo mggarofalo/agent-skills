@@ -95,6 +95,7 @@ Claude links point at the top-level directories. Codex links point at `codex/`. 
 | **recall** | Search past Claude Code and Codex session history (temporal, topic, graph) |
 | **ramp-reimbursements** | Collect AT&T bills into a local PDF cache and prepare monthly Ramp reimbursement drafts |
 | **reflect** | Session retrospective — extract learnings, update memory and guidance files |
+| **rex-orchestration** | Delegate to Claude workers in Rex terminals instead of subagents; orchestrator and worker protocol |
 | **resolve-conflicts** | Resolve merge conflicts on a PR by rebasing, resolving per-category, and force-pushing |
 | **system-audit** | Audit Claude Code system for staleness, redundancy, gaps, and token waste |
 | **work-issue** | End-to-end Plane issue implementation workflow |
