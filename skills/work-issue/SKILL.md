@@ -172,15 +172,25 @@ Re-read `~/.claude/skills/work-issue/SKILL.md` before doing anything else. Conte
 ## Step 6: Commit and push
 
 1. Review `git diff` and `git status`. Stage only the files belonging to this issue (by path — never `git add -A` over unrelated user changes).
-2. Commit with a Conventional Commit message referencing the issue ID.
+2. Commit with a Conventional Commit message referencing the issue ID, using a scope from the repo's allowlist (below).
 3. Verify the branch, then push: `git push -u origin HEAD`
+
+**Commit scopes.** A feature-name scope (`ynab`, `auth`, `checkout`) is the natural pick and the usual way a commit passes locally but bounces at CI. Before composing the message, find out whether the repo restricts scopes. Check in this order and stop at the first hit:
+
+1. **`.github/workflows/*.yml`** — `amannn/action-semantic-pull-request`. A `scopes:` list under `with:` is the allowlist (a `types:` list restricts the type the same way). The action without `scopes:` means scopes are unrestricted — still a hit, stop here.
+2. **commitlint config** — `commitlint.config.{js,cjs,mjs,ts}` or `.commitlintrc{,.js,.json,.yml}`: the `scope-enum` rule.
+3. **`package.json`** — a top-level `commitlint` key with `rules.scope-enum`.
+4. **`commit-msg` hook** — `.husky/commit-msg`, `.githooks/commit-msg`, or the one under `core.hooksPath`: an explicit scope list or regex. A local hook can be looser than CI; CI is the gate that blocks merge.
+5. **Nothing found** — scopes are unrestricted.
+
+Pick the allowed scope that maps to the diff's primary directory (`src/Application/` → `application`); if the diff spans several, take the one with the most changed lines or the most significant layer. Never use a scope that is not on the list. If none fits, stop and ask, showing the allowed scopes and the changed files. **Autonomous:** take the most significant allowed scope and record that assumption in the PR description. If scopes are unrestricted and none applies naturally, omit `(<scope>)`. The PR title in Step 7 uses the same type and scope — the semantic-PR check reads the title, and a squash merge makes it the commit message.
 
 **You are not done. Continue to step 7.**
 
 ## Step 7: Open a PR
 
 ```bash
-gh pr create --title "<concise title>" --body "$(cat <<'EOF'
+gh pr create --title "<type>(<scope>): <concise title> (<ISSUE-ID>)" --body "$(cat <<'EOF'
 ## Summary
 <1-3 bullet points describing what changed and why>
 

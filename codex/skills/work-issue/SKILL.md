@@ -43,6 +43,8 @@ Never suppress checks, use `--no-verify`, or weaken warnings to make the branch 
 
 Review the diff and status, stage only issue files, and use a Conventional Commit that references the issue. Verify the branch immediately before pushing, then push with upstream tracking.
 
+Commit scopes: take the scope from the repo's allowlist, never from the feature name. Check in order and stop at the first hit: `amannn/action-semantic-pull-request` in `.github/workflows/*.yml` (its `scopes:` list, and `types:` if present; the action without `scopes:` means unrestricted); commitlint config (`commitlint.config.*`, `.commitlintrc*`) `scope-enum`; `package.json` `commitlint.rules.scope-enum`; a `commit-msg` hook's explicit list (a local hook can be looser than CI). Nothing found means unrestricted. Pick the allowed scope matching the diff's primary directory. If none fits, stop and ask with the allowed scopes and changed files; when autonomous, take the most significant allowed scope and record the assumption in the PR. The PR title uses the same type and scope.
+
 Open a PR against the resolved base with:
 
 - a concise summary tied to acceptance criteria;

@@ -109,7 +109,7 @@ If the repo has no pre-commit, run the project's equivalent (e.g., `dotnet forma
 
 ## Step 7: Commit
 
-Use a conventional-commits message. Scope should match the affected area:
+Use a conventional-commits message. Take the scope from the repo's allowlist, not the name of the broken feature — discover it as in `/work-issue` Step 6 ("Commit scopes"). The PR title in Step 8 uses the same scope.
 
 ```bash
 git add <changed-files>
