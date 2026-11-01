@@ -40,6 +40,16 @@
             "timeout": 10
           }
         ]
+      },
+      {
+        "matcher": "Bash|PowerShell|mcp__.*(Browser|chrome).*__(form_input|computer|javascript_tool|browser_batch)|mcp__.*__(send_message|create_draft|update_draft|reply|forward)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python ~/.claude/hooks/block-private-tracker-refs.py",
+            "timeout": 10
+          }
+        ]
       }
     ],
     "SessionEnd": [
