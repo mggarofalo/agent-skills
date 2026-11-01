@@ -56,6 +56,32 @@ Matches `Bash`, `Read`, `Write`, and `Edit` tools.
 
 Paths are canonicalized with `os.path.realpath()` to defeat `../` traversal and symlink evasion; relative paths resolve against the payload's `cwd`. Bash commands are also split into shell words, and any word that resolves to a sensitive file above is denied, so `cat ~/.ssh/id_rsa` is blocked like a `Read` would be. Most checks run per command segment, so a flag in one segment never combines with a target in another. Strips quoted strings and heredoc content before matching Bash commands to avoid false positives.
 
+### block-private-tracker-refs.py
+
+Keeps the private Plane instance out of external work. It denies an outward-facing call whose content mentions any of these:
+
+- the Plane host (`plane.wallingford.me`)
+- a Plane work-item ID (`SECRES-1`, `MARVEL-3`, …; the project list is `PLANE_PROJECTS` in the script)
+- "Plane issue/work item/project/ticket/CLI"
+
+Outward-facing means:
+
+- **git commit/tag/notes/push, `gh`, `glab`:** only when the target repo is external, meaning none of its remotes is owned by `mggarofalo`. Your own repos may cite Plane IDs. A push also checks the messages and added lines of commits not yet on any remote.
+- **`curl`/`wget`/`Invoke-RestMethod`/`Invoke-WebRequest`:** when any URL points at a host other than Plane or localhost.
+- **Browser text entry:** `form_input`, typing, `javascript_tool` and batches, in both the built-in browser and Claude in Chrome. This applies on every site because the page URL isn't in the payload; edit Plane with the `plane` CLI instead.
+- **Email:** send/reply/forward/draft tools.
+
+Files sent by reference (`git commit -F`, `gh --body-file`, `curl -d @file`) are read and checked too. The bare word "plane" doesn't match, so "color plane" stays legal. The hook fails closed (exit 2) on an unparseable payload.
+
+The same script doubles as git hooks for external clones, which also catch commits made by hand:
+
+```sh
+# .git/hooks/commit-msg
+exec python ~/.claude/hooks/block-private-tracker-refs.py --scan-file "$1"
+# .git/hooks/pre-push
+exec python ~/.claude/hooks/block-private-tracker-refs.py --git-pre-push
+```
+
 ### session-end-export.py
 
 Runs on `Stop`, `SubagentStop`, `PostCompact` and `SessionEnd`. The hook itself only touches a pending marker, starts a detached worker and exits 0 (about 0.05s); it never exits 2, which on `Stop` would block the agent from stopping. The worker holds a non-blocking lock and loops while the marker reappears, so bursts of events coalesce into one refresh.
