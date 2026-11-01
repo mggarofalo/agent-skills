@@ -95,15 +95,19 @@ HOME = os.path.realpath(os.path.expanduser("~")).replace("\\", "/")
 
 # MSYS /c/Users/... -> C:/Users/... conversion
 _MSYS_DRIVE = re.compile(r"^/([a-zA-Z])/")
+# Leading $HOME / ${HOME}. Windows often has no HOME variable, so expandvars
+# would leave it literal; map it to ~ so it shares the sensitive-path anchors.
+_HOME_VAR = re.compile(r"^\$(?:HOME\b|\{HOME\})")
 
 
 def resolve_path(path: str, cwd: str) -> str:
     """Canonicalize a file path for consistent matching.
 
-    Expands ~ and $VARS, converts MSYS paths to Windows format, anchors
-    relative paths at cwd, resolves symlinks and ../ traversal, and
+    Expands ~, $HOME and $VARS, converts MSYS paths to Windows format,
+    anchors relative paths at cwd, resolves symlinks and ../ traversal, and
     normalizes to forward slashes.
     """
+    path = _HOME_VAR.sub("~", path)
     path = os.path.expandvars(os.path.expanduser(path))
     m = _MSYS_DRIVE.match(path)
     if m:

@@ -311,7 +311,9 @@ def chunk_filename(date: str, short_id: str, chunk_index: int) -> str:
 
 def atomic_write(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=path.parent,
+    # newline="": write "\n" as-is so the bytes match atomic_write_if_changed's
+    # comparison; Windows text mode would write "\r\n" and rewrite every chunk.
+    with tempfile.NamedTemporaryFile("w", encoding="utf-8", newline="", dir=path.parent,
                                      prefix=".tmp-", suffix=".part", delete=False) as handle:
         handle.write(text)
         temporary = Path(handle.name)

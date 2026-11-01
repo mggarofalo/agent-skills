@@ -5,16 +5,16 @@ The hook itself only touches a PENDING marker and spawns a detached worker, so i
 returns in milliseconds and never blocks the session (it always exits 0; exit 2
 on Stop would prevent Claude from stopping).
 
-The worker holds a non-blocking flock. Any request arriving while it runs just
-re-touches PENDING, and the worker loops until no request is pending, so bursts
-of hook events coalesce into at most one extra refresh. Each refresh runs the
+The worker holds a non-blocking file lock (flock, or msvcrt on Windows). Any
+request arriving while it runs just re-touches PENDING, and the worker loops
+until no request is pending, so bursts of hook events coalesce into at most one
+extra refresh. Each refresh runs the
 incremental exporter and calls `qmd update` + `qmd embed -c Claude-sessions` only
 when an export actually changed. Output goes to LOG.
 """
 
 from __future__ import annotations
 
-import fcntl
 import json
 import os
 import shutil
@@ -23,6 +23,12 @@ import sys
 import time
 import traceback
 from pathlib import Path
+
+try:
+    import fcntl
+except ImportError:  # Windows
+    fcntl = None
+    import msvcrt
 
 ROOT = Path(__file__).resolve().parents[1]
 EXPORTER = ROOT / "skills" / "recall" / "export_sessions.py"
@@ -36,6 +42,10 @@ EXPORT_TIMEOUT = 300
 QMD_TIMEOUTS = {"update": 300, "embed": 1800}
 # Hooks may run with a minimal PATH; qmd is a `#!/usr/bin/env node` script.
 EXTRA_PATH = ("/opt/homebrew/bin", "/usr/local/bin")
+# Windows ignores start_new_session. Its own process group keeps the worker
+# out of the session's Ctrl+C, and a hidden console is inherited by the
+# exporter and qmd children instead of each flashing a window. Both are 0 on POSIX.
+DETACH_FLAGS = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0) | getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
 
 def resolve_qmd():
@@ -143,18 +153,45 @@ def drain_pending(log) -> None:
         log_line(log, f"refresh {'finished' if ok else 'failed'}")
 
 
+def try_lock(handle) -> bool:
+    """Take an exclusive lock on an open file without waiting; False if it is held."""
+    if fcntl is not None:
+        try:
+            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return False
+        return True
+    handle.seek(0)
+    try:
+        msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+    except OSError:
+        return False
+    return True
+
+
+def unlock(handle) -> None:
+    # Windows may release a lock some time after close; the PENDING re-check
+    # below must not race a stale lock, so release it explicitly.
+    if fcntl is not None:
+        fcntl.flock(handle, fcntl.LOCK_UN)
+    else:
+        handle.seek(0)
+        msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+
+
 def worker() -> None:
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     while True:
         with LOCK.open("a+") as lock:
-            try:
-                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except BlockingIOError:
+            if not try_lock(lock):
                 PENDING.touch()  # the lock holder re-checks PENDING after releasing
                 return
-            rotate_log()
-            with LOG.open("a", encoding="utf-8") as log:
-                drain_pending(log)
+            try:
+                rotate_log()
+                with LOG.open("a", encoding="utf-8") as log:
+                    drain_pending(log)
+            finally:
+                unlock(lock)
         # A request may have landed between the last check and the unlock, and
         # its worker would have lost the lock race; pick it up here.
         if not PENDING.exists():
@@ -170,6 +207,7 @@ def spawn_worker() -> None:
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
         start_new_session=True,
+        creationflags=DETACH_FLAGS,
         close_fds=True,
     )
 
