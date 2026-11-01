@@ -269,9 +269,13 @@ class EndToEndTests(TempDirs, unittest.TestCase):
         self.make_dirs()
         self.logs = self.root / "logs"
         self.qmd_calls = self.root / "qmd-calls.txt"
-        fake_qmd = self.root / "qmd"
-        fake_qmd.write_text(f'#!/bin/sh\necho "$@" >> "{self.qmd_calls}"\n')
-        fake_qmd.chmod(0o755)
+        if os.name == "nt":  # CreateProcess runs .cmd files but not shebang scripts
+            fake_qmd = self.root / "qmd.cmd"
+            fake_qmd.write_text(f'@echo %*>> "{self.qmd_calls}"\n')
+        else:
+            fake_qmd = self.root / "qmd"
+            fake_qmd.write_text(f'#!/bin/sh\necho "$@" >> "{self.qmd_calls}"\n')
+            fake_qmd.chmod(0o755)
         self.env = {
             **os.environ,
             "CLAUDE_RECALL_PROJECTS": str(self.projects),
