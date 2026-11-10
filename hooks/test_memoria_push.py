@@ -523,8 +523,9 @@ class RefusalTests(Sandbox):
 
 
 class CuttingServer:
-    """Reads a little of an upload, answers 413 and resets the connection, as a server
-    does when a body runs past its own limit: a client still sending sees a reset."""
+    """Reads a little of an upload and resets the connection, as a server does when a
+    body runs past its own limit and the reset reaches a client still sending before
+    the 413 does. No answer is sent, so what the client sees cannot depend on timing."""
 
     def __init__(self) -> None:
         self.connections = 0
@@ -544,7 +545,6 @@ class CuttingServer:
             self.connections += 1
             with connection:
                 connection.recv(4096)
-                connection.sendall(b"HTTP/1.1 413 Payload Too Large\r\nContent-Length: 0\r\n\r\n")
                 connection.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, b"\x01\x00\x00\x00\x00\x00\x00\x00")
 
     def close(self) -> None:
@@ -579,6 +579,28 @@ class TooLargeTests(Sandbox):
         self.assertEqual(cutting.connections, 0, "a transcript over the limit was sent")
         self.assertIn("NEEDS ATTENTION", self.log_text())
         self.assertIn(f"{size} bytes, over the server's {size - 1} byte limit", self.log_text())
+
+    def test_raising_the_limit_releases_a_held_transcript_that_has_not_changed(self) -> None:
+        server = self.start_server()
+        size = self.large_transcript()
+        self.configure(url=server.url, max_session_bytes=size - 1)
+        self.assertEqual(self.run_push()["held"], 1)
+        self.assertEqual(self.run_push()["held"], 1)
+        self.assertIn("or max_session_bytes covers it", self.log_text())
+        self.configure(url=server.url, max_session_bytes=size)
+        self.assertEqual(self.run_push()["sent"], 1)
+        self.assertEqual(len(server.requests), 1)
+        self.assertEqual(self.spooled(), [])
+
+    def test_a_refusal_hold_is_not_released_by_the_limit(self) -> None:
+        server = self.start_server()
+        server.replies = [(409, {"code": "session_shrank"})]
+        self.configure(url=server.url)
+        self.transcript.write_text(record("user", "hello", 1))
+        self.assertEqual(self.run_push()["held"], 1)
+        self.configure(url=server.url, max_session_bytes=10**12)
+        self.assertEqual(self.run_push()["held"], 1)
+        self.assertEqual(len(server.requests), 1)
 
     def test_the_limit_defaults_to_the_servers_and_must_be_a_whole_number(self) -> None:
         self.configure(url="https://memoria.example")

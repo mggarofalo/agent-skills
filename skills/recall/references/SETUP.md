@@ -110,7 +110,7 @@ Each changed transcript gets one entry in `~/.claude/memoria-push/spool/` (Codex
 
 - **Server unreachable, busy, rate limiting or refusing the key:** the run stops, keeps every entry, and keeps a copy of the transcript beside its entry in case the original is cleaned up. The next session end tries again.
 - **A refusal sending again cannot fix,** such as 409 `session_shrank` or `path_owned`, or a body too large: the entry is held, not dropped. Every run logs it as `NEEDS ATTENTION` until the transcript changes, which sends it again, or you delete the entry yourself. Memoria's `docs/migration.md` says what each of these means.
-- **A transcript over `max_session_bytes`** is held the same way before anything is read or sent, and no copy of it is kept. The server would refuse it whole, and sending it anyway can end in a broken connection, which would read as an outage and be tried on every run. It stays local, as the only copy; raising the server's limit, and `max_session_bytes` with it, is what lets it go.
+- **A transcript over `max_session_bytes`** is held the same way before anything is read or sent, and no copy of it is kept. The server would refuse it whole, and sending it anyway can end in a broken connection, which would read as an outage and be tried on every run. It stays local, as the only copy. Raising the server's limit, and `max_session_bytes` with it, lets it go on the next run, even if the transcript has not changed. The size checked is the whole file's, so one that ends in half a line can be held a little before the server's limit.
 
 Everything is logged with a `memoria:` prefix in `~/.claude/logs/session-end-export.log` (Codex: `~/.codex/logs/session-end-export.log`).
 

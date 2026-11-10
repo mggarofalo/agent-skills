@@ -645,12 +645,18 @@ def run(settings: Settings, sources: list, state_dir: Path, log: Log) -> dict:
     # Oldest first, but an entry that keeps failing goes behind the rest, so one
     # session the server cannot take (too large, too slow) does not block the others.
     entries.sort(key=lambda item: (item[1].get("attempts") or 0, item[1].get("mtime_ns") or 0))
+    for path, entry in entries:
+        # Held only for its size, which a raised max_session_bytes can change with no change to the transcript.
+        if entry.get("held") and entry.get("too_large") and not too_large(settings, entry):
+            entry["held"] = entry["too_large"] = None
+            _write_json(path, entry)
     pending = [(p, e) for p, e in entries if not e.get("held")]
     for path, entry in entries:
         if entry.get("held"):
             summary["held"] += 1
             log(f"memoria: NEEDS ATTENTION {entry['format']} session {entry['session_id']}: {entry['held']}. "
-                f"Not sent again until its transcript changes; the entry is {path}")
+                f"Not sent again until its transcript changes{' or max_session_bytes covers it' if entry.get('too_large') else ''}; "
+                f"the entry is {path}")
     if not pending:
         return summary
     try:
@@ -711,6 +717,7 @@ def _send_entry(settings: Settings, key: str, path: Path, entry: dict, state: di
     oversized = too_large(settings, entry)
     if oversized:
         entry["held"] = entry["last_error"] = oversized
+        entry["too_large"] = True
         _write_json(path, entry)
         log(f"memoria: NEEDS ATTENTION {label}: {oversized}. Kept in the spool at {path}")
         return HOLD
