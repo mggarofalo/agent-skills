@@ -286,7 +286,8 @@ def render_chunk(
 
 def atomic_write(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=path.parent, delete=False) as handle:
+    # newline="\n": atomic_write_if_changed compares bytes, and Windows text mode would write \r\n.
+    with tempfile.NamedTemporaryFile("w", encoding="utf-8", newline="\n", dir=path.parent, delete=False) as handle:
         handle.write(text)
         temporary = Path(handle.name)
     temporary.replace(path)

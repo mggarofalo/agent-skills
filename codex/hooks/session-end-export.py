@@ -52,7 +52,10 @@ def request_push() -> None:
     push = load_push()
     if not push.push_enabled():
         return
-    if push.read_hook_input().get("hook_event_name") == "SessionEnd":
+    # Codex sends {"hook_event_name": "SessionEnd", ...} and closes stdin at once
+    # (codex-rs/hooks/schema/generated/session-end.command.input.schema.json). Its
+    # SessionEnd hooks default to a 1 s timeout, so never wait long for input.
+    if push.read_hook_input(timeout=0.5).get("hook_event_name") == "SessionEnd":
         PUSH_PENDING.touch()
 
 
