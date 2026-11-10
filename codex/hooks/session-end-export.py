@@ -47,6 +47,8 @@ def load_push():
 
 def request_push() -> None:
     """In the hook process: mark a push for the worker on SessionEnd, if hosted mode is on."""
+    if not PUSH_MODULE.is_file():  # a copied install has no hosted mode, and says nothing
+        return
     push = load_push()
     if not push.push_enabled():
         return
@@ -56,6 +58,8 @@ def request_push() -> None:
 
 def push_if_requested(log) -> None:
     """In the worker: send to Memoria if a SessionEnd asked. Never raises."""
+    if not PUSH_MODULE.is_file():
+        return
     try:
         push = load_push()
         try:

@@ -100,8 +100,14 @@ def read_config() -> Optional[dict]:
 def push_enabled() -> bool:
     """Cheap check for the hook process. Never raises.
 
-    A config file that cannot be read counts as on, so the worker gets to log why.
+    A config file that exists but cannot be read counts as on, so the worker gets
+    to log why. No file, or a path that is not a file, is off.
     """
+    try:
+        if not config_path().is_file():
+            return False
+    except OSError:
+        return False
     try:
         data = read_config()
     except ConfigError:
@@ -173,6 +179,8 @@ def load_settings() -> Optional[Settings]:
         config_mtime = config_path().stat().st_mtime
     except OSError:
         config_mtime = time.time()
+    parts = urlsplit(url)
+    url = f"{parts.scheme.lower()}://{parts.netloc}{parts.path}"  # check_url refused a query or fragment
     return Settings(
         url=url.rstrip("/"),
         origin=origin,
@@ -209,6 +217,8 @@ def check_url(url: str, allow_insecure: bool) -> str:
         raise ConfigError("url must use the xn-- form of an internationalized host name")
     if parts.username or parts.password:
         raise ConfigError("url must not hold credentials")
+    if parts.query or parts.fragment:
+        raise ConfigError("url must not have a query or fragment")
     if parts.scheme == "http" and not allow_insecure and not _http_allowed(host):
         raise ConfigError("refusing plain http to a host name or public address: the key could be read in transit")
     return origin_of(url)
@@ -492,6 +502,7 @@ class Reply:
 
 
 def send(settings: Settings, key: str, entry: dict, body: bytes, mtime_ns: int) -> Reply:
+    import http.client
     import urllib.error
     import urllib.request
 
@@ -516,7 +527,7 @@ def send(settings: Settings, key: str, entry: dict, body: bytes, mtime_ns: int) 
             return None
 
     handlers: list = [NoRedirect()]
-    if url.startswith("http:"):
+    if urlsplit(url).scheme.lower() == "http":
         handlers.append(urllib.request.ProxyHandler({}))  # plain http never goes through a proxy
     opener = urllib.request.build_opener(*handlers)
     try:
@@ -528,7 +539,7 @@ def send(settings: Settings, key: str, entry: dict, body: bytes, mtime_ns: int) 
         except OSError:
             raw = b""
         return Reply(error.code, _payload(raw))
-    except (urllib.error.URLError, OSError, ValueError) as error:
+    except (urllib.error.URLError, OSError, ValueError, http.client.HTTPException) as error:
         reason = getattr(error, "reason", error)
         return Reply(None, error=f"{type(reason).__name__}: {reason}"[:300])
 
@@ -595,7 +606,9 @@ def run(settings: Settings, sources: list, state_dir: Path, log: Log) -> dict:
     summary = {"sent": 0, "held": 0, "waiting": 0}
     if not entries:
         return summary
-    entries.sort(key=lambda item: item[1].get("mtime_ns") or 0)
+    # Oldest first, but an entry that keeps failing goes behind the rest, so one
+    # session the server cannot take (too large, too slow) does not block the others.
+    entries.sort(key=lambda item: (item[1].get("attempts") or 0, item[1].get("mtime_ns") or 0))
     pending = [(p, e) for p, e in entries if not e.get("held")]
     for path, entry in entries:
         if entry.get("held"):
@@ -609,12 +622,14 @@ def run(settings: Settings, sources: list, state_dir: Path, log: Log) -> dict:
     except CredentialError as error:
         summary["waiting"] = len(pending)
         log(f"memoria: {error}; {len(pending)} session(s) wait in the spool")
+        _keep_copies(pending, log)
         return summary
     deadline = time.monotonic() + settings.budget
     for index, (path, entry) in enumerate(pending):
         if time.monotonic() > deadline:
             summary["waiting"] += len(pending) - index
             log(f"memoria: run budget spent; {len(pending) - index} session(s) wait for the next run")
+            _keep_copies(pending[index:], log)
             break
         outcome = _send_entry(settings, key, path, entry, state, log)
         if outcome == DONE:
@@ -625,10 +640,30 @@ def run(settings: Settings, sources: list, state_dir: Path, log: Log) -> dict:
             summary["waiting"] += 1
         if outcome == STOP:
             summary["waiting"] += len(pending) - index - 1
+            _keep_copies(pending[index + 1:], log)
             break
     _write_json(state_dir / "state.json", state)
     log("memoria: " + json.dumps(summary))
     return summary
+
+
+def _keep_copies(entries: list, log: Log) -> None:
+    """Copy each untried transcript beside its entry, once per version, so a
+    transcript cleaned up during a long outage can still be sent later."""
+    for path, entry in entries:
+        snapshot = entry.get("snapshot") or {}
+        if [snapshot.get("size"), snapshot.get("mtime_ns")] == [entry.get("size"), entry.get("mtime_ns")]:
+            continue
+        try:
+            read = _read_body({**entry, "snapshot": None}, path.with_suffix(".jsonl"))
+            if read is None or not read[0]:
+                continue
+            body, size, mtime_ns, _ = read
+            _atomic_write(path.with_suffix(".jsonl"), body)
+            entry["snapshot"] = {"size": size, "mtime_ns": mtime_ns}
+            _write_json(path, entry)
+        except OSError as error:
+            log(f"memoria: could not keep a copy of {entry['format']} session {entry['session_id']}: {error}")
 
 
 def _send_entry(settings: Settings, key: str, path: Path, entry: dict, state: dict, log: Log) -> str:

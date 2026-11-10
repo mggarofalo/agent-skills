@@ -591,6 +591,78 @@ class HookTests(Sandbox):
         self.assertEqual(len(list((self.root / "sessions").glob("*.md"))), 1)
 
 
+class ReviewRegressionTests(Sandbox):
+    def make_sessions(self, count: int) -> list:
+        paths = []
+        for index in range(count):
+            path = self.projects / "-tmp-demo" / f"{SESSION_ID[:-2]}{index:02d}.jsonl"
+            path.write_text(record("user", f"s{index}", 1))
+            stamp = time.time() + index
+            os.utime(path, (stamp, stamp))
+            paths.append(path)
+        return paths
+
+    def test_missing_module_is_silent_in_both_hook_halves(self) -> None:
+        hook = load(HOOK_PATH, "hook_partial_install")
+        self.configure(url="https://memoria.example.com")
+        marker = self.root / "memoria-push.pending"
+        marker.touch()
+        with mock.patch.object(hook, "PUSH_MODULE", self.root / "absent.py"), \
+                mock.patch.object(hook, "PUSH_PENDING", marker), mock.patch("sys.stdin") as stdin, \
+                tempfile.TemporaryFile("w+") as log:
+            hook.request_push()
+            hook.push_if_requested(log)
+            log.seek(0)
+            self.assertEqual(log.read(), "")
+        stdin.read.assert_not_called()
+
+    def test_config_path_that_is_not_a_file_is_off(self) -> None:
+        self.config.mkdir(parents=True)
+        self.assertFalse(self.push.push_enabled())
+
+    def test_upper_case_scheme_still_bypasses_proxies(self) -> None:
+        server = self.start_server()
+        self.configure(url=server.url.replace("http://", "HTTP://"))
+        self.assertTrue(self.settings().url.startswith("http://"))
+        self.transcript.write_text(record("user", "hello", 1))
+        with mock.patch.dict(os.environ, {"HTTP_PROXY": closed_port_url(), "http_proxy": closed_port_url()}):
+            self.assertEqual(self.run_push()["sent"], 1)
+
+    def test_url_with_a_query_is_refused(self) -> None:
+        with self.assertRaises(self.push.ConfigError):
+            self.push.check_url("https://memoria.example.com/?x=1", False)
+
+    def test_every_untried_entry_gets_a_copy_when_a_run_stops(self) -> None:
+        self.configure(url=closed_port_url(), timeout=2)
+        self.make_sessions(3)
+        self.run_push()
+        for entry in self.spooled():
+            self.assertTrue(entry.with_suffix(".jsonl").exists(), entry.name)
+
+    def test_every_entry_gets_a_copy_while_there_is_no_key(self) -> None:
+        os.environ.pop("MEMORIA_API_KEY")
+        self.configure(url=closed_port_url())
+        paths = self.make_sessions(2)
+        with mock.patch.object(self.push, "keyring_get", return_value=None):
+            self.run_push()
+        for path in paths:
+            path.unlink()
+        server = self.start_server()
+        self.configure(url=server.url)
+        os.environ["MEMORIA_API_KEY"] = KEY
+        self.assertEqual(self.run_push()["sent"], 2)
+
+    def test_an_entry_that_keeps_failing_goes_behind_the_others(self) -> None:
+        self.configure(url=closed_port_url(), timeout=2)
+        first, second = self.make_sessions(2)
+        self.run_push()  # the oldest is tried and fails once
+        server = self.start_server()
+        self.configure(url=server.url)
+        server.replies = [(503, {"code": "ingest_busy"})]
+        self.run_push()
+        self.assertEqual(server.requests[0]["query"]["sessionId"], second.stem)
+
+
 class RecallBackendTests(Sandbox):
     def setUp(self) -> None:
         super().setUp()
