@@ -58,20 +58,33 @@ Paths are canonicalized with `os.path.realpath()` to defeat `../` traversal and 
 
 ### block-private-tracker-refs.py
 
-Keeps the private Plane instance out of external work. It denies an outward-facing call whose content mentions any of these:
+Keeps a private, self-hosted issue tracker out of everything that leaves the machine. The tracker's hostname and project keys stay out of this public repo: the hook reads them from a local file that is never committed.
 
-- the Plane host (`plane.wallingford.me`)
-- a Plane work-item ID (`SECRES-1`, `MARVEL-3`, …; the project list is `PLANE_PROJECTS` in the script)
-- "Plane issue/work item/project/ticket/CLI"
+```json
+// ~/.claude/private-tracker.json  (or set PRIVATE_TRACKER_CONFIG)
+{"hosts": ["tracker.example"], "project_keys": ["ACME", "OPS"], "own_namespaces": ["you"]}
+```
+
+It denies an outward-facing call whose content mentions:
+
+- **a tracker host or a work-item ID for a configured key** (`ACME-12`). This applies everywhere, your own public repos included.
+- **the tracker's name followed by issue, work item, project, ticket or CLI** (`TRACKER_PHRASE`), only for destinations outside your `own_namespaces`: upstream projects, email and browser typing. There it would reveal that a private tracker exists. Your own repos may still document the tracker product, for example a skill for its CLI.
 
 Outward-facing means:
 
-- **git commit/tag/notes/push, `gh`, `glab`:** only when the target repo is external, meaning none of its remotes is owned by `mggarofalo`. Your own repos may cite Plane IDs. A push also checks the messages and added lines of commits not yet on any remote.
-- **`curl`/`wget`/`Invoke-RestMethod`/`Invoke-WebRequest`:** when any URL points at a host other than Plane or localhost.
-- **Browser text entry:** `form_input`, typing, `javascript_tool` and batches, in both the built-in browser and Claude in Chrome. This applies on every site because the page URL isn't in the payload; edit Plane with the `plane` CLI instead.
+- **git commit/tag/notes/push, `gh`, `glab`:** in any repo with a remote, your own public repos included. A push also checks the messages and added lines of commits not yet on any remote. Repos without a remote are local-only and exempt.
+- **`curl`/`wget`/`Invoke-RestMethod`/`Invoke-WebRequest`:** when any URL points at a host other than the tracker or localhost.
+- **Browser text entry:** `form_input`, typing, `javascript_tool` and batches, in both the built-in browser and Claude in Chrome. This applies on every site because the page URL isn't in the payload; use the tracker's CLI for tracker edits.
 - **Email:** send/reply/forward/draft tools.
 
-Files sent by reference (`git commit -F`, `gh --body-file`, `curl -d @file`) are read and checked too. The bare word "plane" doesn't match, so "color plane" stays legal. The hook fails closed (exit 2) on an unparseable payload.
+Files sent by reference (`git commit -F`, `gh --body-file`, `curl -d @file`) are read and checked too. The bare word "plane" doesn't match, so "color plane" stays legal.
+
+The hook fails closed in two ways:
+
+- An unparseable payload exits 2.
+- A missing or invalid config denies outward-facing calls and leaves everything else alone.
+
+The tests use a placeholder config and build tracker phrases at runtime, so neither file trips the hook when pushed.
 
 The same script doubles as git hooks for external clones, which also catch commits made by hand:
 

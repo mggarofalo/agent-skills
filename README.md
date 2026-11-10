@@ -118,7 +118,7 @@ Claude links point at the top-level directories. Codex links point at `codex/`. 
 |------|-----------------|-------------|
 | **large-file read router** | PreToolUse · `Read\|Bash` | Redirects reads over 350 lines to a low-cost stateless worker |
 | **block-destructive-ops** | PreToolUse · `Bash\|Read\|Edit\|Write` | Safety net for `--dangerously-skip-permissions`: blocks destructive git/filesystem/network ops, `bash -c`/`sh -c` wrapper evasion, and reads/writes of sensitive files |
-| **block-private-tracker-refs** | PreToolUse · `Bash\|PowerShell`, browser text entry, email send/draft | Blocks mentions of the private Plane instance (host, work-item IDs, "Plane issue") in outward-facing actions: commits/pushes/`gh`/`glab` to repos not owned by mggarofalo, HTTP requests to external hosts, browser typing, email. Also usable as `commit-msg`/`pre-push` git hooks in external clones |
+| **block-private-tracker-refs** | PreToolUse · `Bash\|PowerShell`, browser text entry, email send/draft | Blocks mentions of a private issue tracker (hosts and work-item IDs from an uncommitted local config) in outward-facing actions: commits/pushes/`gh`/`glab` in any repo with a remote, HTTP requests to external hosts, browser typing, email. Also usable as `commit-msg`/`pre-push` git hooks in external clones |
 | **enforce-worktree-paths** | PreToolUse · `Read\|Edit\|Write\|Glob\|Grep` | Prevents agents in worktrees from reading/writing the original repo root |
 | **session-recall export** | Stop · PostCompact · SubagentStop · SessionEnd | Incrementally exports bounded transcript chunks and coalesces QMD update/embed work |
 
