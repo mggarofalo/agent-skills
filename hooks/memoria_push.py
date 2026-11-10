@@ -21,6 +21,11 @@ process itself, so a slow or unreachable server cannot hold up a session.
 - **Refusals are kept, not dropped.** A refusal that sending again cannot fix,
   such as 409 `session_shrank`, holds the entry and logs it on every run until
   the transcript changes or someone deletes the entry.
+- **Too large is held, not tried.** A transcript over `max_session_bytes`, the
+  server's limit on one session upload (256 MiB unless the config says
+  otherwise), is held the same way without being read or sent: the server would
+  refuse it whole, and sending it anyway can end in a broken connection, which
+  would look like a server worth trying again.
 """
 
 from __future__ import annotations
@@ -48,6 +53,8 @@ KEYRING_SERVICE = "memoria-cli"  # the memoria CLI's keyring service name
 DEFAULT_COLLECTIONS = {"claude": "claude-sessions", "codex": "codex-sessions"}
 DEFAULT_TIMEOUT = 60.0  # seconds per request
 DEFAULT_BUDGET = 300.0  # seconds per run, so one run cannot hold the worker for long
+# The server's default Memoria:Ingest:MaxSessionBytes. It refuses a larger upload whole, so one is never sent.
+DEFAULT_MAX_SESSION_BYTES = 256 * 1024 * 1024
 STATE_VERSION = 1
 CWD_PROBE_BYTES = 256 * 1024
 UUID_RE = re.compile(r"([0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})", re.IGNORECASE)
@@ -124,6 +131,7 @@ class Settings:
     since: Optional[float] = None
     timeout: float = DEFAULT_TIMEOUT
     budget: float = DEFAULT_BUDGET
+    max_session_bytes: int = DEFAULT_MAX_SESSION_BYTES
     config_mtime: float = 0.0
 
 
@@ -141,6 +149,13 @@ def _number(data: dict, name: str, default: float) -> float:
     if isinstance(value, bool) or not isinstance(value, (int, float)) or value <= 0:
         raise ConfigError(f"{name} must be a positive number of seconds")
     return float(value)
+
+
+def _bytes(data: dict, name: str, default: int) -> int:
+    value = data.get(name, default)
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        raise ConfigError(f"{name} must be a positive whole number of bytes")
+    return value
 
 
 def parse_time(value: str) -> float:
@@ -189,6 +204,7 @@ def load_settings() -> Optional[Settings]:
         since=parse_time(since) if since else None,
         timeout=_number(data, "timeout", DEFAULT_TIMEOUT),
         budget=_number(data, "budget", DEFAULT_BUDGET),
+        max_session_bytes=_bytes(data, "max_session_bytes", DEFAULT_MAX_SESSION_BYTES),
         config_mtime=config_mtime,
     )
 
@@ -486,6 +502,26 @@ def _read_body(entry: dict, snapshot_path: Path) -> Optional[tuple]:
     return (body[: end + 1] if end >= 0 else b""), size, mtime_ns, from_snapshot
 
 
+def _size_to_send(entry: dict) -> Optional[int]:
+    """How large the body would be: the transcript's size, or its kept copy's once it is gone. None when neither is there."""
+    try:
+        return Path(entry["path"]).stat().st_size
+    except OSError:
+        snapshot = entry.get("snapshot") or {}
+        size = snapshot.get("size")
+        return size if isinstance(size, int) and not isinstance(size, bool) else None
+
+
+def too_large(settings: Settings, entry: dict) -> Optional[str]:
+    """Why an entry cannot be sent, or None when it fits the server's limit on one session upload."""
+    size = _size_to_send(entry)
+    if size is None or size <= settings.max_session_bytes:
+        return None
+    return (f"its transcript is {size} bytes, over the server's {settings.max_session_bytes} byte limit on one "
+            "session upload, so the server cannot take it and it was not sent. If the server's "
+            f"Memoria:Ingest:MaxSessionBytes is higher, set max_session_bytes in {config_path()} to match")
+
+
 def iso_utc(mtime_ns: int) -> str:
     moment = datetime.fromtimestamp(mtime_ns / 1e9, tz=timezone.utc)
     return moment.isoformat(timespec="milliseconds").replace("+00:00", "Z")
@@ -622,14 +658,14 @@ def run(settings: Settings, sources: list, state_dir: Path, log: Log) -> dict:
     except CredentialError as error:
         summary["waiting"] = len(pending)
         log(f"memoria: {error}; {len(pending)} session(s) wait in the spool")
-        _keep_copies(pending, log)
+        _keep_copies(settings, pending, log)
         return summary
     deadline = time.monotonic() + settings.budget
     for index, (path, entry) in enumerate(pending):
         if time.monotonic() > deadline:
             summary["waiting"] += len(pending) - index
             log(f"memoria: run budget spent; {len(pending) - index} session(s) wait for the next run")
-            _keep_copies(pending[index:], log)
+            _keep_copies(settings, pending[index:], log)
             break
         outcome = _send_entry(settings, key, path, entry, state, log)
         if outcome == DONE:
@@ -640,19 +676,22 @@ def run(settings: Settings, sources: list, state_dir: Path, log: Log) -> dict:
             summary["waiting"] += 1
         if outcome == STOP:
             summary["waiting"] += len(pending) - index - 1
-            _keep_copies(pending[index + 1:], log)
+            _keep_copies(settings, pending[index + 1:], log)
             break
     _write_json(state_dir / "state.json", state)
     log("memoria: " + json.dumps(summary))
     return summary
 
 
-def _keep_copies(entries: list, log: Log) -> None:
+def _keep_copies(settings: Settings, entries: list, log: Log) -> None:
     """Copy each untried transcript beside its entry, once per version, so a
-    transcript cleaned up during a long outage can still be sent later."""
+    transcript cleaned up during a long outage can still be sent later. One too
+    large to send is not copied: it will be held, so a copy would only fill the disk."""
     for path, entry in entries:
         snapshot = entry.get("snapshot") or {}
         if [snapshot.get("size"), snapshot.get("mtime_ns")] == [entry.get("size"), entry.get("mtime_ns")]:
+            continue
+        if too_large(settings, entry):
             continue
         try:
             read = _read_body({**entry, "snapshot": None}, path.with_suffix(".jsonl"))
@@ -669,6 +708,12 @@ def _keep_copies(entries: list, log: Log) -> None:
 def _send_entry(settings: Settings, key: str, path: Path, entry: dict, state: dict, log: Log) -> str:
     label = f"{entry['format']} session {entry['session_id']}"
     snapshot_path = path.with_suffix(".jsonl")
+    oversized = too_large(settings, entry)
+    if oversized:
+        entry["held"] = entry["last_error"] = oversized
+        _write_json(path, entry)
+        log(f"memoria: NEEDS ATTENTION {label}: {oversized}. Kept in the spool at {path}")
+        return HOLD
     read = _read_body(entry, snapshot_path)
     if read is None:
         entry["held"] = "its transcript is gone and no copy was kept"

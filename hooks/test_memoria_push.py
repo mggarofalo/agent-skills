@@ -499,6 +499,16 @@ class RefusalTests(Sandbox):
         self.assertEqual(len(server.requests), 2)
         self.assertEqual(self.spooled(), [])
 
+    def test_payload_too_large_is_held_not_retried(self) -> None:
+        server = self.start_server()
+        server.replies = [(413, {"code": "payload_too_large"})]
+        self.configure(url=server.url)
+        self.transcript.write_text(record("user", "hello", 1))
+        self.assertEqual(self.run_push()["held"], 1)
+        self.run_push()
+        self.assertEqual(len(server.requests), 1)
+        self.assertIn("payload_too_large", self.log_text())
+
     def test_one_held_session_does_not_stop_the_others(self) -> None:
         server = self.start_server()
         server.replies = [(409, {"code": "path_owned"})]
@@ -510,6 +520,86 @@ class RefusalTests(Sandbox):
         os.utime(other, (later, later))
         summary = self.run_push()
         self.assertEqual((summary["held"], summary["sent"]), (1, 1))
+
+
+class CuttingServer:
+    """Reads a little of an upload, answers 413 and resets the connection, as a server
+    does when a body runs past its own limit: a client still sending sees a reset."""
+
+    def __init__(self) -> None:
+        self.connections = 0
+        self.listener = socket.socket()
+        self.listener.bind(("127.0.0.1", 0))
+        self.listener.listen()
+        self.url = f"http://127.0.0.1:{self.listener.getsockname()[1]}"
+        self.thread = threading.Thread(target=self.serve, daemon=True)
+        self.thread.start()
+
+    def serve(self) -> None:
+        while True:
+            try:
+                connection, _ = self.listener.accept()
+            except OSError:
+                return
+            self.connections += 1
+            with connection:
+                connection.recv(4096)
+                connection.sendall(b"HTTP/1.1 413 Payload Too Large\r\nContent-Length: 0\r\n\r\n")
+                connection.setsockopt(socket.SOL_SOCKET, socket.SO_LINGER, b"\x01\x00\x00\x00\x00\x00\x00\x00")
+
+    def close(self) -> None:
+        self.listener.close()
+
+
+class TooLargeTests(Sandbox):
+    def large_transcript(self) -> int:
+        with self.transcript.open("w") as handle:
+            for second in range(60):
+                handle.write(record("user", "x" * 100_000, second))
+        return self.transcript.stat().st_size
+
+    def test_a_cut_off_upload_looks_like_an_outage_so_it_would_be_tried_forever(self) -> None:
+        cutting = CuttingServer()
+        self.addCleanup(cutting.close)
+        self.configure(url=cutting.url)
+        self.large_transcript()
+        for _ in range(2):
+            self.assertEqual(self.run_push()["held"], 0)
+        self.assertEqual(cutting.connections, 2)
+        self.assertIn("unreachable", self.log_text())
+
+    def test_a_transcript_over_the_limit_is_held_without_being_sent(self) -> None:
+        cutting = CuttingServer()
+        self.addCleanup(cutting.close)
+        size = self.large_transcript()
+        self.configure(url=cutting.url, max_session_bytes=size - 1)
+        self.assertEqual(self.run_push()["held"], 1)
+        self.messages.clear()
+        self.assertEqual(self.run_push()["held"], 1)
+        self.assertEqual(cutting.connections, 0, "a transcript over the limit was sent")
+        self.assertIn("NEEDS ATTENTION", self.log_text())
+        self.assertIn(f"{size} bytes, over the server's {size - 1} byte limit", self.log_text())
+
+    def test_the_limit_defaults_to_the_servers_and_must_be_a_whole_number(self) -> None:
+        self.configure(url="https://memoria.example")
+        self.assertEqual(self.settings().max_session_bytes, 256 * 1024 * 1024)
+        for bad in (0, -1, 1.5, True, "big"):
+            self.configure(url="https://memoria.example", max_session_bytes=bad)
+            with self.assertRaises(self.push.ConfigError):
+                self.settings()
+
+    def test_no_copy_is_kept_of_a_transcript_too_large_to_send(self) -> None:
+        size = self.large_transcript()
+        self.configure(url=closed_port_url(), max_session_bytes=size - 1)
+        # The small one is older, so it goes first, finds the server down and stops the run, which keeps copies of the rest.
+        other = self.projects / "-tmp-demo" / f"{SESSION_ID[:-1]}9.jsonl"
+        other.write_text(record("user", "small", 1))
+        earlier = self.transcript.stat().st_mtime - 60
+        os.utime(other, (earlier, earlier))
+        self.assertEqual(self.run_push()["waiting"], 2)
+        copies = list((self.state / "spool").glob("*.jsonl"))
+        self.assertEqual(len(copies), 1, "the small transcript's copy is missing")
+        self.assertLess(copies[0].stat().st_size, size, "the oversized transcript was copied")
 
 
 class HookTests(Sandbox):

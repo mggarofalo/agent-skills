@@ -92,6 +92,7 @@ Write `~/.config/agent-skills/memoria.json` (under `$XDG_CONFIG_HOME` if that is
 | `since` | when this file was first seen with `push` on | Transcripts last changed before this are not sent. Set it to the time of your last `memoria migrate push`, so nothing changed since then is missed. |
 | `timeout` | `60` | Seconds allowed for one upload. |
 | `budget` | `300` | Seconds one run may spend sending. The rest wait for the next run. |
+| `max_session_bytes` | `268435456` (256 MiB) | The server's `Memoria:Ingest:MaxSessionBytes`. A transcript larger than this is held, not sent. Set it to the server's value if that is higher. |
 | `cli` | `memoria` on PATH | The CLI recall runs. |
 
 `push` and `search` are separate, so you can send for a while before you search there.
@@ -109,6 +110,7 @@ Each changed transcript gets one entry in `~/.claude/memoria-push/spool/` (Codex
 
 - **Server unreachable, busy, rate limiting or refusing the key:** the run stops, keeps every entry, and keeps a copy of the transcript beside its entry in case the original is cleaned up. The next session end tries again.
 - **A refusal sending again cannot fix,** such as 409 `session_shrank` or `path_owned`, or a body too large: the entry is held, not dropped. Every run logs it as `NEEDS ATTENTION` until the transcript changes, which sends it again, or you delete the entry yourself. Memoria's `docs/migration.md` says what each of these means.
+- **A transcript over `max_session_bytes`** is held the same way before anything is read or sent, and no copy of it is kept. The server would refuse it whole, and sending it anyway can end in a broken connection, which would read as an outage and be tried on every run. It stays local, as the only copy; raising the server's limit, and `max_session_bytes` with it, is what lets it go.
 
 Everything is logged with a `memoria:` prefix in `~/.claude/logs/session-end-export.log` (Codex: `~/.codex/logs/session-end-export.log`).
 
