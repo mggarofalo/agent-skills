@@ -16,6 +16,11 @@ Session recall uses `Stop` for per-turn freshness, `PostCompact` as a compaction
 a detached worker. A non-blocking file lock coalesces overlapping events, and a pending marker makes
 the lock holder run one more pass if another event arrives during export or embedding.
 
+Hosted mode is off unless `~/.config/agent-skills/memoria.json` sets `"push": true`. When on, a
+`SessionEnd` also has the worker send changed rollouts to a Memoria server as `format=codex`, through
+the shared `hooks/memoria_push.py` and a spool in `~/.codex/memoria-push/`. See
+`skills/recall/references/SETUP.md` at the repository root.
+
 `route-large-reads.py` is the Codex entry point for the shared low-cost worker router. It
 intercepts unbounded `cat`, `head`, `tail`, `less`, and `more` calls that would return more
 than 350 lines, then denies the call with an exact `bulk_read.py` delegation command. The

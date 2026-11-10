@@ -11,10 +11,16 @@ until no request is pending, so bursts of hook events coalesce into at most one
 extra refresh. Each refresh runs the
 incremental exporter and calls `qmd update` + `qmd embed -c Claude-sessions` only
 when an export actually changed. Output goes to LOG.
+
+Hosted mode (memoria_push.py) is off unless its config file turns it on. When on,
+a SessionEnd also touches PUSH_PENDING, and the worker sends changed transcripts
+to Memoria after the export and before QMD, through an offline spool. When off,
+none of this reads stdin, opens a socket or writes a file.
 """
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import shutil
@@ -36,6 +42,10 @@ LOG_DIR = Path(os.environ.get("CLAUDE_RECALL_LOG_DIR", Path.home() / ".claude" /
 LOG = LOG_DIR / "session-end-export.log"
 LOCK = LOG_DIR / "session-recall.lock"
 PENDING = LOG_DIR / "session-recall.pending"
+PUSH_PENDING = LOG_DIR / "memoria-push.pending"
+PUSH_MODULE = Path(__file__).resolve().parent / "memoria_push.py"
+PUSH_STATE = Path(os.environ.get("CLAUDE_RECALL_PUSH_STATE", Path.home() / ".claude" / "memoria-push"))
+PROJECTS_DIR = Path(os.environ.get("CLAUDE_RECALL_PROJECTS", Path.home() / ".claude" / "projects"))
 COLLECTION = "Claude-sessions"
 LOG_MAX_BYTES = 1_000_000
 EXPORT_TIMEOUT = 300
@@ -85,8 +95,8 @@ def child_env() -> dict[str, str]:
     return env
 
 
-def run_refresh(log) -> bool:
-    """Export once; refresh QMD only if an export changed. Returns success."""
+def run_export(log) -> tuple[bool, int]:
+    """Run the exporter once. Returns (success, number of sessions exported)."""
     try:
         result = subprocess.run(
             [sys.executable, str(EXPORTER), "--json"],
@@ -94,12 +104,12 @@ def run_refresh(log) -> bool:
         )
     except subprocess.TimeoutExpired:
         log_line(log, f"export timed out after {EXPORT_TIMEOUT}s")
-        return False
+        return False, 0
     if result.stderr:
         log.write(result.stderr)
     if result.returncode != 0:
         log_line(log, f"export failed with exit {result.returncode}: {result.stdout.strip()[:500]}")
-        return False
+        return False, 0
     try:
         stats = json.loads(result.stdout)
         changed = stats["exported"]
@@ -109,6 +119,54 @@ def run_refresh(log) -> bool:
     except (json.JSONDecodeError, KeyError, TypeError):
         log_line(log, f"unreadable exporter output; assuming changes: {result.stdout.strip()[:500]}")
         changed = 1
+    return True, changed
+
+
+def load_push():
+    """memoria_push, loaded by path so the hook works from any directory."""
+    spec = importlib.util.spec_from_file_location("memoria_push", PUSH_MODULE)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["memoria_push"] = module  # dataclasses look their module up here
+    spec.loader.exec_module(module)
+    return module
+
+
+def request_push() -> None:
+    """In the hook process: mark a push for the worker on SessionEnd, if hosted mode is on."""
+    push = load_push()
+    if not push.push_enabled():
+        return
+    if push.read_hook_input().get("hook_event_name") == "SessionEnd":
+        LOG_DIR.mkdir(parents=True, exist_ok=True)
+        PUSH_PENDING.touch()
+
+
+def push_if_requested(log) -> None:
+    """In the worker: send to Memoria if a SessionEnd asked. Never raises."""
+    try:
+        push = load_push()
+        try:
+            settings = push.load_settings()
+        except push.ConfigError as error:
+            if PUSH_PENDING.exists():
+                PUSH_PENDING.unlink(missing_ok=True)
+                log_line(log, f"memoria: push is not configured correctly: {error}")
+            return
+        if settings is None or not PUSH_PENDING.exists():
+            return
+        PUSH_PENDING.unlink(missing_ok=True)
+        push.run(settings, push.claude_sources(PROJECTS_DIR), PUSH_STATE, lambda message: log_line(log, message))
+    except Exception:  # the local export and QMD refresh go on regardless
+        log.write(traceback.format_exc())
+
+
+def run_refresh(log) -> bool:
+    """Export once; push if asked; refresh QMD only if an export changed. Returns success."""
+    ok, changed = run_export(log)
+    # Transcripts, not exports, are what is pushed, so a failed export does not stop it.
+    push_if_requested(log)
+    if not ok:
+        return False
     if not changed:
         log_line(log, "no session changes; skipped QMD refresh")
         return True
@@ -217,6 +275,12 @@ def main() -> int:
         if "--worker" in sys.argv:
             worker()
         else:
+            try:
+                request_push()
+            except Exception as error:  # a broken push must not stop the local refresh
+                LOG_DIR.mkdir(parents=True, exist_ok=True)
+                with LOG.open("a", encoding="utf-8") as log:
+                    log_line(log, f"memoria: push request failed: {error!r}")
             spawn_worker()
     except Exception as error:  # never block or fail the session over recall
         try:

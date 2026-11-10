@@ -24,6 +24,8 @@ HOOK_PATH = Path(__file__).resolve().parent / "session-end-export.py"
 EXPORTER_PATH = Path(__file__).resolve().parents[1] / "skills" / "recall" / "export_sessions.py"
 SESSION_ID = "abcdef12-3456-7890-abcd-ef1234567890"
 CHUNK_NAME_RE = re.compile(r"^\d{4}-\d{2}-\d{2}_[0-9a-f]{8}(_part-\d{3})?\.md$")
+# Keep a real hosted-mode config on this machine out of these tests.
+NO_PUSH_CONFIG = {"AGENT_SKILLS_MEMORIA_CONFIG": str(Path(tempfile.gettempdir()) / "no-such-memoria-config.json")}
 
 
 def load(path: Path, name: str):
@@ -178,7 +180,7 @@ class Completed:
 class RefreshTests(unittest.TestCase):
     def setUp(self) -> None:
         self.hook = load(HOOK_PATH, "claude_recall_hook")
-        self.env = mock.patch.dict(os.environ, {"CLAUDE_RECALL_QMD": "/fake/qmd"})
+        self.env = mock.patch.dict(os.environ, {"CLAUDE_RECALL_QMD": "/fake/qmd", **NO_PUSH_CONFIG})
         self.env.start()
 
     def tearDown(self) -> None:
@@ -221,6 +223,7 @@ class WorkerTests(unittest.TestCase):
             mock.patch.object(self.hook, "LOG", logs / "export.log"),
             mock.patch.object(self.hook, "LOCK", logs / "recall.lock"),
             mock.patch.object(self.hook, "PENDING", logs / "recall.pending"),
+            mock.patch.dict(os.environ, NO_PUSH_CONFIG),
         ]
         for patch in self.patches:
             patch.start()
@@ -283,6 +286,7 @@ class EndToEndTests(TempDirs, unittest.TestCase):
             "CLAUDE_RECALL_STATE": str(self.state),
             "CLAUDE_RECALL_LOG_DIR": str(self.logs),
             "CLAUDE_RECALL_QMD": str(fake_qmd),
+            **NO_PUSH_CONFIG,
         }
 
     def tearDown(self) -> None:
