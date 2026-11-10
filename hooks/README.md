@@ -88,6 +88,8 @@ Runs on `Stop`, `SubagentStop`, `PostCompact` and `SessionEnd`. The hook itself 
 
 Each pass runs the `recall` skill's `export_sessions.py --json`, which parses only bytes appended since the last run and writes bounded chunks atomically, rewriting only chunks whose content changed. QMD `update` and `embed -c Claude-sessions` run only when something was exported. Logs go to `~/.claude/logs/session-end-export.log`.
 
+**Hosted mode** (`memoria_push.py`) is off unless `~/.config/agent-skills/memoria.json` sets `"push": true`. When on, a `SessionEnd` also has the worker send changed transcripts to a Memoria server's `POST /v1/ingest/session`, after the export and before QMD, through an offline spool in `~/.claude/memoria-push/`. Setup, the config fields and how the spool behaves are in `skills/recall/references/SETUP.md`.
+
 ## Tests
 
 ```bash
