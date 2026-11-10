@@ -41,7 +41,7 @@ Resolve the requested date or range using the current timezone. Search matching 
 
 ## Topic mode
 
-First pick the backend: run `python scripts/recall_backend.py` from this skill directory. It prints `{"backend": "qmd", ...}` unless `~/.config/agent-skills/memoria.json` sets `"search": "memoria"`.
+First pick the backend: run `python scripts/recall_backend.py` from this skill directory. It prints `{"backend": "qmd", ...}` unless `~/.config/agent-skills/memoria.json` sets `"search": "memoria"`. If it exits non-zero, report its message and use QMD or `rg`.
 
 **QMD (the default).** Prefer an available semantic-search connector when it indexes the shared session collection. Otherwise use `rg` across exported Markdown, rank by meaningful match count and recency, and inspect context around the strongest hits.
 
